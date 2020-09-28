@@ -1,0 +1,24 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "manhua"
+author = "Ong Yong Xin"
+author-email = "ongyongxin2020+github@gmail.com"
+home-page = "https://github.com/ongyx/manhua"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+description-file = "README.md"
+requires = [
+    "requests>=2.24.0",
+    "beautifulsoup4>=4.9.1",
+    "jsonschema>=3.2.0",
+]
+requires-python = ">=3.6"
+
+[tool.flit.scripts]
+manhua = "manhua.cli:main"
