@@ -1,7 +1,7 @@
 # manhua
 > 漫画: (literal: slow drawing), a comic.
 
-![logo](https://raw.githubusercontent.com/ongyx/manhua/master/logo.png "manhua")
+![logo](https://raw.githubusercontent.com/ongyx/manhua/master/logo.jpg "manhua")
 
 ## What?
 manhua is a website scraper specifically geared towards downloading pictures from websites, i.e comics/mangas.
@@ -20,6 +20,10 @@ Bootstrap names should be a valid Python identifier. (This is important!)
 
 ## Install
 `python(3) -m pip install manhua`
+
+## Build
+All my python projects now use [flit](https://pypi.org/project/flit) to build and publish.
+To build, do `flit build`.
 
 ## License
 MIT.
