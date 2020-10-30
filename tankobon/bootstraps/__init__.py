@@ -12,9 +12,9 @@ The name must be a valid Python identifier (recommended to use `snake_case`).
 Example (`name.py`):
 
 ```python
-from manhua.base import GenericManga
+from tankobon.base import GenericManga
 
-# Every bootstrap must have a 'Manga' class which inherits from manhua.base.GenericManga.
+# Every bootstrap must have a 'Manga' class which inherits from tankobon.base.GenericManga.
 # The 'parse_chapters' and 'parse_pages' methods of GenericManga must be overriden.
 
 class Manga(GenericManga):
@@ -25,9 +25,9 @@ class Manga(GenericManga):
 ```
 
 The `parse_all` method of the Manga class must emit a manifest conforming to the
-Manga schema (see manhua.schema.SCHEMA). It has already been defined in GenericManga,
+Manga schema (see tankobon.schema.SCHEMA). It has already been defined in GenericManga,
 so most of the time there is no need to override it. It *just* works.
-(See documentation for both functions in manhua.base.GenericManga on how to correctly implement them.)
+(See documentation for both functions in tankobon.base.GenericManga on how to correctly implement them.)
 
 The emitted manifest should be added to `INDEX.zip` in this directory. If
 recompressing, use DEFLATE.
@@ -36,7 +36,7 @@ recompressing, use DEFLATE.
 To load an existing bootstrap:
 
 ```python
-from manhua.bootstraps import Bootstrap
+from tankobon.bootstraps import Bootstrap
 # load the associated Manga object from the bootstrap.
 manga = Bootstrap("manga_name")
 # load the existing manifest for the manga (if avaliable).
@@ -74,7 +74,7 @@ class Bootstrap(object):
     
     Attributes:
         name (str): Bootstrap name.
-        manga (manhua.base.GenericManga): The uninitalised Manga class (if you want to subclass).
+        manga (tankobon.base.GenericManga): The uninitalised Manga class (if you want to subclass).
         available (list): All loadable bootstraps.
     """
     
@@ -90,7 +90,7 @@ class Bootstrap(object):
 
         try:
             self._bootstrap_module = importlib.import_module(
-                f"manhua.bootstraps.{name}")
+                f"tankobon.bootstraps.{name}")
         except ModuleNotFoundError as err:
             raise ValueError(f"failed loading bootstrap '{name}': {err}")
 

@@ -6,8 +6,8 @@ import pathlib
 import re
 from typing import Generator
 
-from manhua.base import GenericManga, Chapter
-from manhua.utils import get_soup
+from tankobon.base import GenericManga, Chapter
+from tankobon.utils import get_soup
 
 
 class Manga(GenericManga):

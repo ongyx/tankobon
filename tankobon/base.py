@@ -1,5 +1,5 @@
 # coding: utf8
-"""manhua (漫画): Manga downloader and scraper."""
+"""tankobon (漫画): Manga downloader and scraper."""
 
 import abc
 from collections.abc import MutableMapping

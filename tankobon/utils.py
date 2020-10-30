@@ -1,5 +1,5 @@
 # coding: utf8
-"""Utilities for manhua.
+"""Utilities for tankobon.
 """
 
 import random

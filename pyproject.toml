@@ -3,10 +3,10 @@ requires = ["flit_core >=2,<4"]
 build-backend = "flit_core.buildapi"
 
 [tool.flit.metadata]
-module = "manhua"
+module = "tankobon"
 author = "Ong Yong Xin"
 author-email = "ongyongxin2020+github@gmail.com"
-home-page = "https://github.com/ongyx/manhua"
+home-page = "https://github.com/ongyx/tankobon"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -21,4 +21,4 @@ requires = [
 requires-python = ">=3.6"
 
 [tool.flit.scripts]
-manhua = "manhua.cli:main"
+tankobon = "tankobon.cli:main"

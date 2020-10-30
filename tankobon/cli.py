@@ -5,7 +5,7 @@ import pathlib
 
 from .base import Cache
 
-CACHEPATH = pathlib.Path.home() / "Documents" / "manhua"
+CACHEPATH = pathlib.Path.home() / "Documents" / "tankobon"
 BOOTSTRAP_PATH = pathlib.Path(__file__).parent / "bootstraps"
 
 

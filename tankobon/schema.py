@@ -1,5 +1,5 @@
 # coding: utf8
-"""Schema validifier for manhua manifests.
+"""Schema validifier for tankobon manifests.
 """
 
 import jsonschema
