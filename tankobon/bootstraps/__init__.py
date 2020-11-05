@@ -50,7 +50,7 @@ import json
 import pathlib
 import zipfile
 
-from .. import base
+from tankobon.base import GenericManga
 
 BOOTSTRAP_PATH = pathlib.Path(__file__).parent
 INDEX = BOOTSTRAP_PATH / "INDEX.zip"
@@ -58,9 +58,9 @@ INDEX = BOOTSTRAP_PATH / "INDEX.zip"
 
 class Bootstrap(object):
     """Helper to load Manga classes from bootstraps.
-    
+
     Usage:
-    
+
     manga_bootstrap = Bootstrap('manga_name')
     # the raw Manga object
     Manga = manga_bootstrap.manga
@@ -68,16 +68,16 @@ class Bootstrap(object):
     manga = manga_bootstrap(
         ...  # other args
     )
-    
+
     Args:
         name: The bootstrap name.
-    
+
     Attributes:
         name (str): Bootstrap name.
         manga (tankobon.base.GenericManga): The uninitalised Manga class (if you want to subclass).
         available (list): All loadable bootstraps.
     """
-    
+
     available = []
 
     for pyfile in BOOTSTRAP_PATH.glob("*.py"):
@@ -90,7 +90,8 @@ class Bootstrap(object):
 
         try:
             self._bootstrap_module = importlib.import_module(
-                f"tankobon.bootstraps.{name}")
+                f"tankobon.bootstraps.{name}"
+            )
         except ModuleNotFoundError as err:
             raise ValueError(f"failed loading bootstrap '{name}': {err}")
 
@@ -99,14 +100,15 @@ class Bootstrap(object):
 
     @property
     def manga(self) -> type:
-        return self._bootstrap_module.Manga
+        # mypy dosen't like dynamic imports
+        return self._bootstrap_module.Manga  # type: ignore
 
-    def __call__(self, **kwargs: dict) -> base.GenericManga:
+    def __call__(self, **kwargs: dict) -> GenericManga:
         """Initalise the Manga object using the database loaded from the bootstrap.
-        
+
         Args:
             **kwargs: Passed to the Manga constructor.
-        
+
         Returns:
             The initalised Manga object.
         """
@@ -124,4 +126,3 @@ class Bootstrap(object):
             return self.manga(manifest, **kwargs)
 
         return self.manga(**kwargs)
-

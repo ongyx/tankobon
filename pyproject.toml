@@ -14,11 +14,19 @@ classifiers = [
 ]
 description-file = "README.md"
 requires = [
-    "requests>=2.24.0",
     "beautifulsoup4>=4.9.1",
-    "jsonschema>=3.2.0",
+    "click>=7.1.2",
+    "coloredlogs>=14.0",
+    "html5lib>=1.1",
+    "requests>=2.24.0",
+    "requests-random-user-agent>=2020.10.19",
 ]
 requires-python = ">=3.6"
+
+[tool.flit.metadata.requires-extra]
+jsonschema = [
+    "jsonschema>=3.2.0",
+]
 
 [tool.flit.scripts]
 tankobon = "tankobon.cli:main"
