@@ -27,6 +27,9 @@ requires-python = ">=3.6"
 jsonschema = [
     "jsonschema>=3.2.0",
 ]
+gui = [
+    "pyglet>=1.5.8"
+]
 
 [tool.flit.scripts]
-tankobon = "tankobon.cli:main"
+tankobon = "tankobon.cli:cli"

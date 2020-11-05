@@ -3,14 +3,15 @@
 
 import abc
 import json
+import logging
 import multiprocessing as mproc
 import pathlib
-import logging
 from collections.abc import MutableMapping
 from multiprocessing.pool import ThreadPool
-from typing import Any, Generator, Iterable, List, Optional, Tuple, Union, Dict
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import bs4
+import requests
 
 from . import utils
 from .exceptions import CacheError
@@ -26,10 +27,10 @@ class Cache(MutableMapping):
     Args:
         path: The path to store the cache at.
         database: The existing manga database.
-            If not specified, the database will be loaded from 'INDEX.json' in path.
+            If not specified, the database will be loaded from 'index.json' in path.
     """
 
-    CACHE_FILENAME = "INDEX.json"
+    CACHE_FILENAME = "index.json"
 
     def __init__(
         self, path: Union[str, pathlib.Path], database: Optional[dict] = None
@@ -111,7 +112,7 @@ class Cache(MutableMapping):
             urls = self.database["chapters"][id]["pages"]
 
             with ThreadPool(threads) as pool:
-                responses = pool.imap(utils.get_url, urls)
+                responses = pool.imap(requests.get, urls)
 
                 for page_number, response in enumerate(responses):
                     _log.debug("downloading page %s", page_number)
@@ -162,17 +163,20 @@ class GenericManga(abc.ABC):
 
     def __init__(
         self,
-        database: Optional[dict] = None,
+        database: Optional[Union[dict, Cache]] = None,
         update: bool = True,
     ) -> None:
         if database is None:
             self.database = self.DEFAULTS
         else:
-            self.database = database
+            self.database = database  # type: ignore
 
         self.soup = utils.get_soup(self.database["url"])
         if update:
             self.refresh()
+
+    def __getattr__(self, key):
+        return self.database[key]
 
     def query(self, query: str) -> Any:
         """A much nicer way to get values from a dictionary.

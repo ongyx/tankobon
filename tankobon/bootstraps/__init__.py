@@ -103,10 +103,11 @@ class Bootstrap(object):
         # mypy dosen't like dynamic imports
         return self._bootstrap_module.Manga  # type: ignore
 
-    def __call__(self, **kwargs: dict) -> GenericManga:
+    def __call__(self, *args, **kwargs) -> GenericManga:
         """Initalise the Manga object using the database loaded from the bootstrap.
 
         Args:
+            *args: Passed to the Manga constructor.
             **kwargs: Passed to the Manga constructor.
 
         Returns:
@@ -123,6 +124,6 @@ class Bootstrap(object):
                 manifest = None
 
         if manifest is not None:
-            return self.manga(manifest, **kwargs)
+            return self.manga(manifest, *args, **kwargs)
 
-        return self.manga(**kwargs)
+        return self.manga(*args, **kwargs)

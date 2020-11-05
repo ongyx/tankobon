@@ -33,31 +33,6 @@ def get_file_extension(response: requests.models.Response) -> str:
     return f".{FILE_EXTENSIONS[content_type]}"
 
 
-def get_url(url: str, timeout: Number = TIMEOUT) -> requests.models.Response:
-    """Retrieve a URL.
-
-    Args:
-        url: The url to retrieve.
-        timeout: How long to wait for a server response.
-
-    Returns:
-        The response of the URL.
-
-    Raises:
-        ValueError, if the webpage could not be fetched.
-        IndexError, if the connection timed out.
-    """
-
-    try:
-        response = requests.get(url, timeout=TIMEOUT)
-    except requests.exceptions.HTTPError as err:
-        raise ValueError(f"failed to fetch webpage: {err}")
-    except requests.exceptions.Timeout:
-        raise IndexError(f"server timed out: {TIMEOUT} seconds without response")
-
-    return response
-
-
 def get_soup(
     *args, encoding: Optional[str] = None, parser: str = BSOUP_PARSER, **kwargs
 ) -> bs4.BeautifulSoup:
@@ -72,7 +47,7 @@ def get_soup(
         **kwargs: See get_url.
     """
 
-    response = get_url(*args, **kwargs)
+    response = requests.get(*args, **kwargs)
     if encoding is not None:
         html_text = response.content.decode(encoding)
     else:
