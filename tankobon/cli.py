@@ -88,6 +88,8 @@ def download(name, path, threads, refresh, chapters):
     with Cache(path, database=manga.database) as c:
         if chapters == "all":
             chapters = None
+        else:
+            chapters = chapters.split("/")
 
         c.download_chapters(ids=chapters, threads=threads)
 
