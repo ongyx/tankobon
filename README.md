@@ -2,6 +2,13 @@
 
 ![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/logo.jpg "tankobon")
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/tankobon)](https://pypi.org/project/tankobon)
+![PyPI - License](https://img.shields.io/pypi/l/tankobon)
+![PyPI](https://img.shields.io/pypi/v/tankobon)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/tankobon)
+![Lines of code](https://img.shields.io/tokei/lines/github/ongyx/tankobon)
+
 ## What?
 tankobon is a website scraper specifically geared towards downloading pictures from websites, i.e comics/mangas.
 
