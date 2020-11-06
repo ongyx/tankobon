@@ -38,9 +38,7 @@ To load an existing bootstrap:
 ```python
 from tankobon.bootstraps import Bootstrap
 # load the associated Manga object from the bootstrap.
-manga = Bootstrap("manga_name")
-# load the existing manifest for the manga (if avaliable).
-manifest = bootstraps.retrieve_manifest("manga_name")
+manga = Bootstrap("manga_name")()
 ```
 
 """
@@ -105,7 +103,7 @@ class Bootstrap(object):
         _log.debug("initalised bootstrap for %s", name)
 
     @property
-    def Manga(self) -> type:
+    def manga(self) -> type:
         # mypy dosen't like dynamic imports
         return self._bootstrap_module.Manga  # type: ignore
 
@@ -131,9 +129,9 @@ class Bootstrap(object):
 
         _log.debug("loaded bootstrap for %s", self.name)
         if manifest is not None:
-            return self.Manga(manifest, *args, **kwargs)
+            return self.manga(manifest, *args, **kwargs)
 
-        return self.Manga(*args, **kwargs)
+        return self.manga(*args, **kwargs)
 
 
 def update_index(index_path: pathlib.Path = INDEX) -> None:
@@ -150,7 +148,7 @@ def update_index(index_path: pathlib.Path = INDEX) -> None:
         for name in Bootstrap.available:
             _log.info("updating index for manga %s", name)
             filename = f"{name}.json"
-            manga = Bootstrap(name).Manga(database=json.loads(zf.read(filename)))
+            manga = Bootstrap(name).manga(database=json.loads(zf.read(filename)))
             manga.parse_all()
             zf_buffer.writestr(filename, json.dumps(manga.database))
 
