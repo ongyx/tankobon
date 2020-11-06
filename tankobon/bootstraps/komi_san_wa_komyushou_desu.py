@@ -13,7 +13,7 @@ from tankobon.utils import get_soup
 class Manga(GenericManga):
 
     IMGHOST = "blogspot.com"
-    RE_TITLE = re.compile(r"(?:.*)Chapter (\d+(?:\.\d)?) [:\-] (.+)\Z")
+    RE_TITLE = re.compile(r"(?:.*)Chapter (\d+(?:\.\d)?) *[:\-] *(.+)\Z")
     # not used, kept here for reference
     RE_URL = re.compile(r"(?:.*)?chapter-(\d+(?:-\d)?)-([\w\-]*)/?\Z")
 

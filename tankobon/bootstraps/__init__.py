@@ -46,11 +46,15 @@ manifest = bootstraps.retrieve_manifest("manga_name")
 """
 
 import importlib
+import io
 import json
+import logging
 import pathlib
 import zipfile
 
 from tankobon.base import GenericManga
+
+_log = logging.getLogger("tankobon")
 
 BOOTSTRAP_PATH = pathlib.Path(__file__).parent
 INDEX = BOOTSTRAP_PATH / "INDEX.zip"
@@ -78,13 +82,13 @@ class Bootstrap(object):
         available (list): All loadable bootstraps.
     """
 
-    available = []
+    available = set()
 
     for pyfile in BOOTSTRAP_PATH.glob("*.py"):
         if not pyfile.stem == "__init__":
-            available.append(pyfile.stem)
+            available.add(pyfile.stem)
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, index_path: pathlib.Path = INDEX) -> None:
         if name not in self.available:
             raise ValueError(f"bootstrap '{name}' does not exist")
 
@@ -96,10 +100,12 @@ class Bootstrap(object):
             raise ValueError(f"failed loading bootstrap '{name}': {err}")
 
         self.name = name
+        self.index_path = index_path
         self.pyfile = BOOTSTRAP_PATH / f"{name}.py"
+        _log.debug("initalised bootstrap for %s", name)
 
     @property
-    def manga(self) -> type:
+    def Manga(self) -> type:
         # mypy dosen't like dynamic imports
         return self._bootstrap_module.Manga  # type: ignore
 
@@ -114,7 +120,7 @@ class Bootstrap(object):
             The initalised Manga object.
         """
 
-        with zipfile.ZipFile(str(INDEX)) as zf:
+        with zipfile.ZipFile(str(self.index_path)) as zf:
             try:
                 with zf.open(f"{self.name}.json") as f:
                     manifest = json.load(f)
@@ -123,7 +129,32 @@ class Bootstrap(object):
                 # no manifest available, or zipfile is corrupted
                 manifest = None
 
+        _log.debug("loaded bootstrap for %s", self.name)
         if manifest is not None:
-            return self.manga(manifest, *args, **kwargs)
+            return self.Manga(manifest, *args, **kwargs)
 
-        return self.manga(*args, **kwargs)
+        return self.Manga(*args, **kwargs)
+
+
+def update_index(index_path: pathlib.Path = INDEX) -> None:
+    """Update INDEX.zip with the newest bootstrap files.
+
+    Args:
+        index_path: The path to the index file. Defaults to INDEX.
+    """
+    # use a seperate buffer, because zipfile will complain about duplicate names...
+    buffer = io.BytesIO()
+    zf_buffer = zipfile.ZipFile(buffer, mode="x")
+
+    with zipfile.ZipFile(str(index_path)) as zf:
+        for name in Bootstrap.available:
+            _log.info("updating index for manga %s", name)
+            filename = f"{name}.json"
+            manga = Bootstrap(name).Manga(database=json.loads(zf.read(filename)))
+            manga.parse_all()
+            zf_buffer.writestr(filename, json.dumps(manga.database))
+
+    zf_buffer.close()
+
+    with index_path.open(mode="wb") as f:
+        f.write(buffer.getvalue())

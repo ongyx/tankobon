@@ -10,7 +10,7 @@ import click
 
 from tankobon.__version__ import __version__
 from tankobon.base import Cache
-from tankobon.bootstraps import Bootstrap
+from tankobon.bootstraps import Bootstrap, update_index
 from tankobon.utils import THREADS
 
 # monkey-patch options
@@ -92,6 +92,12 @@ def download(name, path, threads, refresh, chapters):
             chapters = chapters.split("/")
 
         c.download_chapters(ids=chapters, threads=threads)
+
+
+@cli.command()
+def update():
+    """Update all manga bootstraps (in the index)."""
+    update_index()
 
 
 if __name__ == "__main__":

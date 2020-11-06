@@ -176,7 +176,10 @@ class GenericManga(abc.ABC):
             self.refresh()
 
     def __getattr__(self, key):
-        return self.database[key]
+        value = self.database.get(key)
+        if value is None:
+            raise AttributeError
+        return value
 
     def query(self, query: str) -> Any:
         """A much nicer way to get values from a dictionary.
