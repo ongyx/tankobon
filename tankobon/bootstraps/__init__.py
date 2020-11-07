@@ -77,14 +77,14 @@ class Bootstrap(object):
     Attributes:
         name (str): Bootstrap name.
         manga (tankobon.base.GenericManga): The uninitalised Manga class (if you want to subclass).
-        available (list): All loadable bootstraps.
+        available (dict): All loadable bootstraps, mapped to their hostnames.
     """
 
     available = set()
 
-    for pyfile in BOOTSTRAP_PATH.glob("*.py"):
-        if not pyfile.stem == "__init__":
-            available.add(pyfile.stem)
+    for module in BOOTSTRAP_PATH.glob("*.py"):
+        if module.stem != "__init__":
+            available.add(module.stem)
 
     def __init__(self, name: str, index_path: pathlib.Path = INDEX) -> None:
         if name not in self.available:

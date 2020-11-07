@@ -25,7 +25,6 @@ VERBOSITY = (
 _log = logging.getLogger("tankobon")
 
 CACHEPATH = pathlib.Path.home() / "Documents" / "tankobon"
-BOOTSTRAP_PATH = pathlib.Path(__file__).parent / "bootstraps"
 
 
 @click.group()

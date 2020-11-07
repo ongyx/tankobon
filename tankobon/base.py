@@ -16,7 +16,7 @@ import requests
 from . import utils
 from .exceptions import CacheError
 
-Chapter = Tuple[str, str, str]
+Chapters = Generator[Tuple[str, str, str], None, None]
 
 _log = logging.getLogger("tankobon")
 
@@ -166,10 +166,11 @@ class GenericManga(abc.ABC):
         database: Optional[Union[dict, Cache]] = None,
         update: bool = True,
     ) -> None:
-        if database is None:
-            self.database = self.DEFAULTS
-        else:
-            self.database = database  # type: ignore
+        self.database = self.DEFAULTS
+        self.database.update(database)  # type: ignore
+
+        if "chapters" not in self.database:
+            self.database["chapters"] = {}
 
         self.soup = utils.get_soup(self.database["url"])
         if update:
@@ -229,7 +230,20 @@ class GenericManga(abc.ABC):
             return False
 
     @abc.abstractmethod
-    def parse_chapters(self) -> Generator[Chapter, None, None]:
+    def page_is_valid(self, tag: bs4.element.Tag) -> bool:
+        """Check whether or not a image link is a vaild manga page.
+
+        Args:
+            tag: The link to check.
+
+        Returns:
+            True if so, otherwise False.
+
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def parse_chapters(self) -> Chapters:
         """Parse all chapters from the soup.
 
         Yields:
@@ -238,14 +252,9 @@ class GenericManga(abc.ABC):
 
         raise NotImplementedError
 
-    @abc.abstractmethod
     def parse_pages(self, id: str, force: bool = False) -> list:
         """Parse all pages from a chapter.
         The chapter's info must have already been cached into the database.
-
-        The chapter webpage's HTML should be downloaded and parsed for page links.
-        The page URLs will be cached in the database and returned if requested
-        subsequently (won't parse again).
 
         Args:
             id: The chapter id.
@@ -257,7 +266,18 @@ class GenericManga(abc.ABC):
             A list of page URLs.
         """
 
-        raise NotImplementedError
+        pages = []
+        soup = utils.get_soup(self.database["chapters"][id]["url"], encoding="utf-8")
+
+        if not (self.is_parsed(id) and not force):
+
+            for link in soup.find_all("img"):
+                if self.page_is_valid(link):
+                    pages.append(link["src"])
+
+            self.database["chapters"][id]["pages"] = pages
+
+        return self.database["chapters"][id]["pages"]
 
     def refresh(self, force: bool = False) -> None:
         """Refresh the database, adding any new chapter info.
@@ -273,7 +293,7 @@ class GenericManga(abc.ABC):
             self.database["chapters"][id] = {"url": url, "title": title, "pages": []}
 
     @property
-    def existing_chapters(self) -> Generator[Chapter, None, None]:
+    def existing_chapters(self) -> Chapters:
         """Generate existing chapters cached into the database.
 
         Yields:

@@ -6,7 +6,7 @@ import pathlib
 import re
 from typing import Generator
 
-from tankobon.base import GenericManga, Chapter
+from tankobon.base import GenericManga, Chapters
 from tankobon.utils import get_soup
 
 
@@ -23,22 +23,10 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
-    def page_is_valid(self, url: str) -> bool:
-        """Check if a page url is valid.
+    def page_is_valid(self, tag):
+        return self.IMGHOST in tag.src
 
-        Returns:
-            True if so, otherwise False.
-        """
-
-        return self.IMGHOST in url
-
-    def parse_chapters(self) -> Generator[Chapter, None, None]:
-        """Generate all chapters in the manga.
-
-        Yields:
-            A three-tuple of (id, title, url) for each chapter.
-        """
-
+    def parse_chapters(self):
         # get rid of section
         section = self.soup.find("section", class_="widget ceo_latest_comics_widget")
         if section is not None:
@@ -56,18 +44,3 @@ class Manga(GenericManga):
             if match:
                 id, title = match[0]
                 yield id, title, href
-
-    def parse_pages(self, id: str, force: bool = False) -> list:
-        pages = []
-        soup = get_soup(self.database["chapters"][id]["url"], encoding="utf-8")
-
-        if not (self.is_parsed(id) and not force):
-
-            for link in soup.find_all("img"):
-                src = link["src"]
-                if self.page_is_valid(src):
-                    pages.append(src)
-
-            self.database["chapters"][id]["pages"] = pages
-
-        return self.database["chapters"][id]["pages"]
