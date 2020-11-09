@@ -7,11 +7,12 @@ import logging
 import multiprocessing as mproc
 import pathlib
 from collections.abc import MutableMapping
-from multiprocessing.pool import ThreadPool
+from multiprocessing.pool import ThreadPool as Pool
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 
 import bs4
 import requests
+import requests_random_user_agent
 
 from . import utils
 from .exceptions import CacheError
@@ -19,122 +20,6 @@ from .exceptions import CacheError
 Chapters = Generator[Tuple[str, str, str], None, None]
 
 _log = logging.getLogger("tankobon")
-
-
-class Cache(MutableMapping):
-    """A cache/downloader for Manga pages, stored on disk.
-
-    Args:
-        path: The path to store the cache at.
-        database: The existing manga database.
-            If not specified, the database will be loaded from 'index.json' in path.
-    """
-
-    CACHE_FILENAME = "index.json"
-
-    def __init__(
-        self, path: Union[str, pathlib.Path], database: Optional[dict] = None
-    ) -> None:
-        self.path = pathlib.Path(path)
-        self.cachepath = self.path / self.CACHE_FILENAME
-
-        # create path if it does not exist
-        self.path.mkdir(exist_ok=True)
-
-        if database is None:
-            self.reload_cache()
-        else:
-            self.database = database
-
-    def __getitem__(self, key):
-        return self.database[key]
-
-    def __setitem__(self, key, value):
-        self.database[key] = value
-
-    def __delitem__(self, key):
-        del self.database[key]
-
-    def __iter__(self):
-        return iter(self.database)
-
-    def __len__(self):
-        return len(self.database)
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self.database})"
-
-    def reload_cache(self) -> None:
-        """Load the existing cache database from self.path into self.database.
-
-        Raises:
-            CacheError, if the database does not exist.
-        """
-
-        try:
-            cache = self.path / self.CACHE_FILENAME
-            with cache.open() as f:
-                self.database = json.load(f)
-            _log.debug("reloaded cache")
-
-        except FileNotFoundError:
-            raise CacheError(f"cache at path {str(cache)} does not exist")
-
-    def download_chapters(
-        self,
-        ids: Optional[List[str]] = None,
-        force: bool = False,
-        threads: int = utils.THREADS,
-    ) -> None:
-        """Download chapters, caching its pages on disk.
-        Ignores any existing chapter data on disk (downloads anyway).
-
-        Args:
-            ids: The page ids. Defaults to all chapters.
-            force: Whether or not to re-download chapters, regardless if they are
-                already downloaded. Defaults to False.
-            threads: The number of threads to use to download the pages.
-                Defaults to utils.THREADS (8).
-        """
-
-        if ids is None:
-            ids = self.database["chapters"].keys()
-
-        for id in ids:
-
-            chapter_path = self.path / id
-            if chapter_path.exists() and not force:
-                _log.info(f"skipping chapter {id}")
-                continue
-            _log.info(f"downloading chapter {id}")
-
-            chapter_path.mkdir(exist_ok=True)
-            urls = self.database["chapters"][id]["pages"]
-
-            with ThreadPool(threads) as pool:
-                responses = pool.imap(requests.get, urls)
-
-                for page_number, response in enumerate(responses):
-                    _log.debug("downloading page %s", page_number)
-
-                    page_path = (
-                        chapter_path
-                        / f"{page_number}{utils.get_file_extension(response)}"
-                    )
-
-                    with page_path.open(mode="wb+") as f:
-                        f.write(response.content)
-
-    def close(self):
-        with self.cachepath.open("w+") as f:
-            json.dump(self.database, f)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, tb):
-        if tb is None:
-            self.close()
 
 
 class GenericManga(abc.ABC):
@@ -163,7 +48,7 @@ class GenericManga(abc.ABC):
 
     def __init__(
         self,
-        database: Optional[Union[dict, Cache]] = None,
+        database: Optional[dict] = None,
         update: bool = True,
     ) -> None:
         self.database = self.DEFAULTS
@@ -225,7 +110,7 @@ class GenericManga(abc.ABC):
         """
 
         try:
-            return bool(self.database["chapters"][id]["url"])
+            return bool(self.database["chapters"][id]["pages"])
         except KeyError:
             return False
 
@@ -302,6 +187,16 @@ class GenericManga(abc.ABC):
         for id, chapter in self.database["chapters"].items():
             yield id, chapter["title"], chapter["url"]
 
+    def _parse_all(self, args):
+        force, info = args
+        id, title, url = info
+        if self.database["chapters"][id]["pages"] and not force:
+            _log.info(f"skipping {id}")
+            return
+        pages = self.parse_pages(id, force=True)
+        _log.info(f"parsed {id}")
+        return id, {"title": title, "url": url, "pages": pages}
+
     def parse_all(self, threads: int = utils.THREADS, force: bool = False) -> dict:
         """Parse all chapters, adding their page URLs to their info.
 
@@ -314,18 +209,12 @@ class GenericManga(abc.ABC):
         Returns:
             The info of all chapters mapped to their ids.
         """
+        database = self.database
 
-        def _parse_all(args):
-            id, title, url = args
-            if self.database["chapters"][id]["pages"] and not force:
-                _log.info(f"skipping {id}")
-                return
-            pages = self.parse_pages(id, force=True)
-            _log.info(f"parsed {id}")
-            return id, {"title": title, "url": url, "pages": pages}
-
-        with ThreadPool(threads) as pool:
-            results = pool.imap_unordered(_parse_all, self.existing_chapters)
+        with Pool(threads) as pool:
+            results = pool.imap_unordered(
+                self._parse_all, ((force, c) for c in self.existing_chapters)  # type: ignore
+            )
 
             for result in results:
                 if result is None:
@@ -334,3 +223,52 @@ class GenericManga(abc.ABC):
                 self.database[id] = chapter
 
         return self.database
+
+    def download_chapters(
+        self,
+        path: pathlib.Path,
+        ids: Optional[List[str]] = None,
+        force: bool = False,
+        threads: int = utils.THREADS,
+    ) -> None:
+        """Download chapters, caching its pages on disk.
+        Ignores any existing chapter data on disk (downloads anyway).
+
+        Args:
+            path: Where to download the chapters to.
+            ids: The page ids. Defaults to all chapters.
+            force: Whether or not to re-download chapters, regardless if they are
+                already downloaded. Defaults to False.
+            threads: The number of threads to use to download the pages.
+                Defaults to utils.THREADS (8).
+        """
+
+        if ids is None:
+            ids = self.database["chapters"].keys()
+
+        for id in ids:
+            # don't be sus
+            session = requests.Session()
+
+            chapter_path = path / id
+            if chapter_path.exists() and not force:
+                _log.info(f"skipping chapter {id}")
+                continue
+            _log.info(f"downloading chapter {id}")
+
+            chapter_path.mkdir(exist_ok=True)
+            urls = self.database["chapters"][id]["pages"]
+
+            with Pool(threads) as pool:
+                responses = pool.imap(session.get, urls)
+
+                for page_number, response in enumerate(responses):
+                    _log.debug("downloading page %s", page_number)
+
+                    page_path = (
+                        chapter_path
+                        / f"{page_number}{utils.get_file_extension(response)}"
+                    )
+
+                    with page_path.open(mode="wb+") as f:
+                        f.write(response.content)

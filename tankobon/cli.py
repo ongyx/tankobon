@@ -3,15 +3,20 @@
 import json
 import logging
 import pathlib
-import zipfile
 from functools import partial
+from urllib.parse import urlparse
 
 import click
+import coloredlogs
 
 from tankobon.__version__ import __version__
-from tankobon.base import Cache
-from tankobon.bootstraps import Bootstrap, update_index
+from tankobon.store import Store, STORES, INDEX
 from tankobon.utils import THREADS
+
+coloredlogs.install(
+    fmt=" %(levelname)-8s :: %(message)s",
+    logger=logging.getLogger("tankobon"),
+)
 
 # monkey-patch options
 click.option = partial(click.option, show_default=True)  # type: ignore
@@ -38,29 +43,49 @@ def cli(verbosity):
     _log.setLevel(VERBOSITY[verbosity - 1])
 
 
-@cli.command()
+@cli.group()
+def store():
+    """Manage stores."""
+
+
+@store.command()
 def list():
-    """List all mangas available."""
-    for manga in Bootstrap.available:
-        name = Bootstrap(manga).manga.DEFAULTS["title"]
-        click.echo(f"{manga} ({name})")
+    """List all stores available, and their downloaded mangas."""
+    for k, v in Store._index["stores"].items():
+        click.echo(f"{k}/")
+        spacing = " " * len(k)
+        for m, t in v.items():
+            click.echo(f"{spacing}{m} ({t['title']})")
+
+
+@store.command()
+@click.option(
+    "-s", "--store_name", help="update only for a specific store/manga", default="all"
+)
+def update(store_name):
+    """Update all previously downloaded mangas."""
+    if "/" in store_name:
+        store_name, _, manga_name = store.partition("/")
+    else:
+        manga_name = None
+
+    if store_name == "all":
+        for store, mangas in Store._index["stores"].items():
+            for manga in mangas:
+                with Store(store, manga) as m:
+                    m.parse_all()
+    else:
+        if manga_name:
+            with Store(store_name, manga_name) as m:
+                m.parse_all()
+        else:
+            for manga in Store._index["stores"][store_name]:
+                with Store(store_name, manga_name) as m:
+                    m.parse_all()
 
 
 @cli.command()
-@click.argument("name")
-def info(name):
-    """Get info on a manga bootstrap."""
-    manga = Bootstrap(name)()
-    click.echo(f"Title: {manga.title}")
-    click.echo(f"URL: {manga.url}")
-    click.echo(f"Chapters:")
-    for chapter in sorted(manga.chapters, key=float):
-        chapter_info = manga.chapters[chapter]
-        click.echo(f"{chapter}: {chapter_info['title']} ({chapter_info['url']})")
-
-
-@cli.command()
-@click.argument("name")
+@click.argument("url")
 @click.option("-p", "--path", help="where to download to", default=".")
 @click.option(
     "-t",
@@ -77,26 +102,25 @@ def info(name):
     help="which chapters to download, seperated by slashes",
     default="all",
 )
-def download(name, path, threads, refresh, chapters):
-    """Download a manga with name."""
-    manga = Bootstrap(name)()
+def download(url, path, threads, refresh, chapters):
+    """Download a manga from url."""
+    store = Store(STORES[urlparse(url).netloc], url)
+    if store.database:
+        manga = store.manga(store.database)
+    else:
+        manga = store.manga({"url": url})
 
-    if refresh:
-        manga.refresh()
+    if chapters != "all":
+        chapters = chapters.split("/")
+        for chapter in chapters:
+            manga.parse_pages(chapter)
+    else:
+        chapters = None
+        manga.parse_all()
 
-    with Cache(path, database=manga.database) as c:
-        if chapters == "all":
-            chapters = None
-        else:
-            chapters = chapters.split("/")
-
-        c.download_chapters(ids=chapters, threads=threads)
-
-
-@cli.command()
-def update():
-    """Update all manga bootstraps (in the index)."""
-    update_index()
+    manga.download_chapters(pathlib.Path(path), chapters)
+    store.database = manga.database
+    store.close()
 
 
 if __name__ == "__main__":

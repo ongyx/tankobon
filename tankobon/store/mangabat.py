@@ -2,7 +2,7 @@
 
 import re
 
-from tankobon.base import GenericManga, Chapters
+from tankobon.base import GenericManga
 
 
 class Manga(GenericManga):
@@ -19,7 +19,7 @@ class Manga(GenericManga):
     def page_is_valid(self, tag):
         return "M.MangaBat.com" in tag.title
 
-    def parse_chapters(self) -> Chapters:
+    def parse_chapters(self):
         for tag in self.soup.find_all("a", class_="chapter-name"):
             href = tag.get("href")
             title = tag.text

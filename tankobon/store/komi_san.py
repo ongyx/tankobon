@@ -24,7 +24,7 @@ class Manga(GenericManga):
     }
 
     def page_is_valid(self, tag):
-        return self.IMGHOST in tag.src
+        return self.IMGHOST in tag["src"]
 
     def parse_chapters(self):
         # get rid of section
