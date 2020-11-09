@@ -2,6 +2,7 @@
 
 import re
 
+from tankobon import utils
 from tankobon.base import GenericManga
 
 
@@ -12,12 +13,21 @@ class Manga(GenericManga):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.database["title"] = RE_TITLE.findall(
-            soup.find("meta", property="og:title").content
+        self.database["title"] = self.RE_TITLE.findall(
+            self.soup.find("meta", property="og:title")["content"]
         )[0]
 
-    def page_is_valid(self, tag):
-        return "M.MangaBat.com" in tag.title
+    def parse_pages(self, id, soup):
+
+        pages = []
+        pages_div = soup.find("div", class_="container-chapter-reader")
+        if not pages_div:
+            return
+
+        for link in pages_div.find_all("img"):
+            pages.append(link["src"])
+
+        self.add_chapter(id, pages)
 
     def parse_chapters(self):
         for tag in self.soup.find_all("a", class_="chapter-name"):

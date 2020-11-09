@@ -19,7 +19,11 @@ COOLDOWN = 0.5
 THREADS = 8
 
 # map to mimetypes (mimetypes module sucks)
-FILE_EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/gif": "gif"}
+FILE_EXTENSIONS = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+}
 
 
 def get_file_extension(response: requests.models.Response) -> str:
@@ -29,7 +33,7 @@ def get_file_extension(response: requests.models.Response) -> str:
         response: The response object (from requests.get, et al.)
     """
 
-    content_type = response.headers["Content-Type"]
+    content_type = response.headers["Content-Type"].partition(";")[0]
     return f".{FILE_EXTENSIONS[content_type]}"
 
 

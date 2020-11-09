@@ -23,8 +23,16 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
-    def page_is_valid(self, tag):
-        return self.IMGHOST in tag["src"]
+    def parse_pages(self, id, soup):
+        pages = []
+        pages_div = soup.find("div", class_="post-body entry-content")
+        if not pages_div:
+            return
+
+        for link in soup.find_all("img"):
+            pages.append(link["src"])
+
+        self.add_chapter(id, pages)
 
     def parse_chapters(self):
         # get rid of section

@@ -10,8 +10,8 @@ import click
 import coloredlogs
 
 from tankobon.__version__ import __version__
-from tankobon.store import Store, STORES, INDEX
-from tankobon.utils import THREADS
+from tankobon.store import INDEX, STORES, Store
+from tankobon.utils import THREADS, get_soup
 
 coloredlogs.install(
     fmt=" %(levelname)-8s :: %(message)s",
@@ -59,6 +59,25 @@ def list():
 
 
 @store.command()
+@click.argument("name")
+def info(name):
+    """Show infomation on a specific manga, where name is in the format 'store_name/manga_name'."""
+    store_name, _, manga_name = name.partition("/")
+    database = Store._index["stores"][store_name][manga_name]
+    for key in ("title", "url"):
+        click.echo(f"{key.title()}: {database[key]}")
+    click.echo(f"# of chapters: {len(database['chapters'])}")
+    click.echo("chapters:")
+    for k in sorted(database["chapters"], key=float):
+        v = database["chapters"][k]
+        spacing = len(k)
+        click.echo(f"{k}:")
+        for i in ("title", "url"):
+            click.echo(f"{' ' * spacing}{i.title()}: {v[i]}")
+        click.echo(f"{' ' * spacing}# of pages: {len(v['pages'])}")
+
+
+@store.command()
 @click.option(
     "-s", "--store_name", help="update only for a specific store/manga", default="all"
 )
@@ -70,18 +89,23 @@ def update(store_name):
         manga_name = None
 
     if store_name == "all":
+        _log.info("updating all mangas")
         for store, mangas in Store._index["stores"].items():
             for manga in mangas:
                 with Store(store, manga) as m:
+                    _log.info(f"updating {store}:{manga}")
                     m.parse_all()
     else:
+        _log.info(f"updating mangas for store {store_name}")
         if manga_name:
-            with Store(store_name, manga_name) as m:
-                m.parse_all()
+            mangas = [manga_name]
         else:
-            for manga in Store._index["stores"][store_name]:
-                with Store(store_name, manga_name) as m:
-                    m.parse_all()
+            mangas = Store._index["stores"][store_name]
+
+        for manga in mangas:
+            with Store(store_name, manga) as m:
+                _log.info(f"updating {store}:{manga}")
+                m.parse_all()
 
 
 @cli.command()
@@ -113,7 +137,9 @@ def download(url, path, threads, refresh, chapters):
     if chapters != "all":
         chapters = chapters.split("/")
         for chapter in chapters:
-            manga.parse_pages(chapter)
+            manga.parse_pages(
+                chapter, get_soup(manga.database["chapters"][chapter]["url"])
+            )
     else:
         chapters = None
         manga.parse_all()

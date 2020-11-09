@@ -5,11 +5,6 @@
                 "title": "Komi Can't Communicate",
                 "url": "https://komi-san.com",
                 "chapters": {
-                    "274": {
-                        "url": "https://komi-san.com/manga/komi-san-chapter-274-coming-soon/",
-                        "title": "Coming soon",
-                        "pages": []
-                    },
                     "273": {
                         "url": "https://komi-san.com/manga/komi-san-chapter-273-happy-new-year/",
                         "title": "Happy New Year",
@@ -317,7 +312,28 @@
                     "258": {
                         "url": "https://komi-san.com/manga/komi-san-chapter-258-contact/",
                         "title": "Contact",
-                        "pages": []
+                        "pages": [
+                            "https://1.bp.blogspot.com/-Xrmlhildlco/XxUO2D1esSI/AAAAAAAAGE8/UaRPa-sMnvwT7sQKAL8sH4iEOPqQPYu9wCLcBGAsYHQ/s1600/001.jpg",
+                            "https://1.bp.blogspot.com/-4gqrF4ZqUAg/XxUO5BafD4I/AAAAAAAAGFA/sFOlOeRNG2UnaIdgsna_27RlH4hy24DqACLcBGAsYHQ/s1600/002.jpg",
+                            "https://1.bp.blogspot.com/-WUVGvs-qOkY/XxUO5ZmfA_I/AAAAAAAAGFE/ihcyzGTFCWgA6Zc58Pb95_rjfYbnD46NwCLcBGAsYHQ/s1600/003.jpg",
+                            "https://1.bp.blogspot.com/-IJH857IT9XA/XxUO6B9MBeI/AAAAAAAAGFI/gFHuU2L12icTfz73BUZsP8Y8m6jduaSdACLcBGAsYHQ/s1600/004.jpg",
+                            "https://1.bp.blogspot.com/-cEcv6_l0NPQ/XxUO6dhRp8I/AAAAAAAAGFM/E37mhntHq1EWZ5qs_h0I9vIN4k9uOB6ywCLcBGAsYHQ/s1600/005.jpg",
+                            "https://1.bp.blogspot.com/-5scMRKzhqOU/XxUO6lhvG1I/AAAAAAAAGFQ/pTgKaWHDqBg2yWIf83r_sMWBQ_BIqjqOQCLcBGAsYHQ/s1600/006.jpg",
+                            "https://1.bp.blogspot.com/-GjCinOIFrdc/XxUO7ELjQEI/AAAAAAAAGFU/CQAxepZRSBIu2H2mYz_0XOcjjEqk84zeQCLcBGAsYHQ/s1600/007.jpg",
+                            "https://1.bp.blogspot.com/-rZrRZ0WCepY/XxUO7TJG8UI/AAAAAAAAGFY/EUqv8liMByIHqmblNuVcRBDKDG-adJX1wCLcBGAsYHQ/s1600/008.jpg",
+                            "https://1.bp.blogspot.com/-pjMun6UjMhQ/XxUO79SfyOI/AAAAAAAAGFc/i-ZJXAXfx9k6BpbP-XDBHPp78lNpUlx8QCLcBGAsYHQ/s1600/009.jpg",
+                            "https://1.bp.blogspot.com/-DtU0gx2Dkpg/XxUO8py7V_I/AAAAAAAAGFg/oJNaCix5IdI9xM4W4936cxnxQFRhuSIqgCLcBGAsYHQ/s1600/010.jpg",
+                            "https://1.bp.blogspot.com/-vnOq1C_ekJ4/XxUO8-fEdqI/AAAAAAAAGFk/Vynl_pFDHEYHlsB2vs8gwrxwAVyY0yVTQCLcBGAsYHQ/s1600/011.jpg",
+                            "https://1.bp.blogspot.com/-6hRuam7AJQI/XxUO9NBKGKI/AAAAAAAAGFo/MeyAV845ah4RyzkQ0DJwxx489DrwJl1ewCLcBGAsYHQ/s1600/012.jpg",
+                            "https://1.bp.blogspot.com/-fCKLmPwHMXk/XxUO99d3T6I/AAAAAAAAGFs/Klls0FbvwYkR_-KHqZlTkbouK1BtGZBKQCLcBGAsYHQ/s1600/013.jpg",
+                            "https://1.bp.blogspot.com/-NSTJFU1wuXA/XxUO-esu1BI/AAAAAAAAGFw/2B2KGm-P0JIokxu7ccbISWakWQWXMZMswCLcBGAsYHQ/s1600/014.jpg",
+                            "https://1.bp.blogspot.com/-JTm1L4D0298/XxUO-V5LSyI/AAAAAAAAGF0/CFxeBRjP4VEOCXe4wjeuH-t2aLDaed-IACLcBGAsYHQ/s1600/015.jpg",
+                            "https://1.bp.blogspot.com/-aAWbwvhyyVk/XxUO-2yDrOI/AAAAAAAAGF4/AJDS1auXLEMuKqd6NCtSlqWsirf3vg65gCLcBGAsYHQ/s1600/016.jpg",
+                            "https://1.bp.blogspot.com/-tvg1ksKNbVc/XxUO_YVP0wI/AAAAAAAAGF8/Np-ZmmXzToYdoVf9HRngAW6ovHeleiIMACLcBGAsYHQ/s1600/017.jpg",
+                            "https://1.bp.blogspot.com/-044KGrna2YU/XxUO_oL5ysI/AAAAAAAAGGA/Bnv1IkLQc6YWqu85g4TUhRcp9-lbMa46gCLcBGAsYHQ/s1600/018.jpg",
+                            "//pixel.quantserve.com/pixel/p-31iz6hfFutd16.gif?labels=Domain.komi_san_com,DomainId.212972",
+                            "https://sb.scorecardresearch.com/p?c1=2&c2=20015427&cv=2.0&cj=1"
+                        ]
                     },
                     "257": {
                         "url": "https://komi-san.com/manga/komi-san-chapter-257-studying-and-a-sleepover/",
@@ -4683,7 +4699,10 @@
                     "36": {
                         "url": "https://komi-san.com/manga/komi-san-chapter-36-studying-for-tests/",
                         "title": "Studying For Tests",
-                        "pages": []
+                        "pages": [
+                            "//pixel.quantserve.com/pixel/p-31iz6hfFutd16.gif?labels=Domain.komi_san_com,DomainId.212972",
+                            "https://sb.scorecardresearch.com/p?c1=2&c2=20015427&cv=2.0&cj=1"
+                        ]
                     },
                     "35": {
                         "url": "https://komi-san.com/manga/komi-san-chapter-35-gloom/",
@@ -5350,8 +5369,232 @@
                             "https://1.bp.blogspot.com/-AHbfPqX2nLo/Xim5FY0IfDI/AAAAAAAAACs/PYYw2TERWlgQNBANJYF_1DSchUNVJHO7wCLcBGAsYHQ/s1600/043.jpg",
                             "https://1.bp.blogspot.com/-hrWC9aunadk/Xim5FkphANI/AAAAAAAAACw/9I48nAvdZMIc7mFJJNnyGTOpQbES8FUJQCLcBGAsYHQ/s1600/044.jpg"
                         ]
+                    },
+                    "274": {
+                        "url": "https://komi-san.com/manga/komi-san-chapter-274-coming-soon/",
+                        "title": "Coming soon",
+                        "pages": []
                     }
                 }
+            }
+        },
+        "mangabat": {
+            "https://m.mangabat.com/read-ia386393": {
+                "url": "https://m.mangabat.com/read-ia386393",
+                "chapters": {
+                    "06": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-7",
+                        "title": ": Scrap And Build (4)",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/14.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/15.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/16.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/17.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/18.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/19.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/20.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/21.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/22.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/23.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/24.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_06_scrap_and_build_4/25.jpg"
+                        ]
+                    },
+                    "05": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-6",
+                        "title": ": Scrap And Build (3)",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_05_scrap_and_build_3/14.jpg"
+                        ]
+                    },
+                    "04": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-5",
+                        "title": ": Scrap And Build (2)",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/14.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/15.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/16.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/17.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/18.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/19.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/20.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/21.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/22.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/23.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/24.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/25.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/26.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/27.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_04_scrap_and_build_2/28.jpg"
+                        ]
+                    },
+                    "03": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-4",
+                        "title": ": Scrap And Build (1)",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/14.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/15.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/16.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/17.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/18.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/19.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_03_scrap_and_build_1/20.jpg"
+                        ]
+                    },
+                    "02": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-3",
+                        "title": ": Thoughts On Brassieres (Part 2)",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/14.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/15.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/16.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/17.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/18.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/19.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/20.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/21.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/22.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/23.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/24.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/25.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/26.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/27.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/28.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/29.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_02_thoughts_on_brassieres_part_2/30.jpg"
+                        ]
+                    },
+                    "01": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-2",
+                        "title": ": Thoughts On Brassieres (Part 1)",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/14.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/15.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/16.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/17.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/18.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/19.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/20.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/21.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/22.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/23.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/24.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/25.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/26.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/27.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/28.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/29.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/30.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/31.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/32.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/33.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_01_thoughts_on_brassieres_part_1/34.jpg"
+                        ]
+                    },
+                    "00": {
+                        "url": "https://m.mangabat.com/read-ia386393-chap-1",
+                        "title": ": Prologue",
+                        "pages": [
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/1.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/2.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/3.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/4.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/5.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/6.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/7.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/8.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/9.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/10.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/11.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/12.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/13.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/14.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/15.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/16.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/17.jpg",
+                            "https://s5.mkklcdnv5.com/mangakakalot/c2/cp918035/vol1_episode_00_prologue/18.jpg"
+                        ]
+                    }
+                },
+                "title": "Your Name. Another Side: Earthbound"
             }
         }
     }

@@ -10,19 +10,19 @@
 ![Lines of code](https://img.shields.io/tokei/lines/github/ongyx/tankobon)
 
 ## What?
-tankobon is a website scraper specifically geared towards downloading pictures from websites, i.e comics/mangas.
+tankobon is a website scraper for comics and mangas. tankobon relies on **stores**, which define how to parse a website for chapters and chapters for links to the pages themselves.
+(somewhat like youtube-dl extractors.) Currently, the following websites are supported:
 
-tankobon is based around __bootstraps__, which are normal Python scripts that defines how to extract the image links from a webpage.
-These links are outputted in a standardised format as JSON (see the `tankobon/schema.py` file), called the __index__.
-__Bootstrap__ scripts are stored in `bootstraps/`, and __index__ files are stored in `bootstraps/INDEX.zip`.
+- `komi-san.com`
+- `m.mangabat.com`
 
-Bootstrap names should be a valid Python identifier. (This is important!)
+I will eventually come up with documentation later on how to create a store.
 
-## Depends
-- `python` - At least version 3.6.
-- `requests` - Downloader.
-- `bs4` - Powerful HTML parser.
-
+## Usage
+```bash
+$ tankobon download 'https://komi-san.com'  # download all chapters
+$ tankobon info 'https://komi-san.com'  # and then get info on the chapters
+```
 
 ## Install
 `python(3) -m pip install tankobon`

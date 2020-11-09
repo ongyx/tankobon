@@ -2,6 +2,7 @@
 """tankobon (漫画): Manga downloader and scraper."""
 
 import abc
+import functools
 import json
 import logging
 import multiprocessing as mproc
@@ -114,18 +115,18 @@ class GenericManga(abc.ABC):
         except KeyError:
             return False
 
-    @abc.abstractmethod
-    def page_is_valid(self, tag: bs4.element.Tag) -> bool:
-        """Check whether or not a image link is a vaild manga page.
+    def add_chapter(self, id: str, pages: List[str]) -> None:
+        """Add a chapter to the manga.
 
         Args:
-            tag: The link to check.
+            id: The chapter id.
+            pages: A list of page URLs.
 
         Returns:
-            True if so, otherwise False.
-
+            None.
         """
-        raise NotImplementedError
+
+        self.database["chapters"][id]["pages"] = pages
 
     @abc.abstractmethod
     def parse_chapters(self) -> Chapters:
@@ -137,32 +138,19 @@ class GenericManga(abc.ABC):
 
         raise NotImplementedError
 
-    def parse_pages(self, id: str, force: bool = False) -> list:
+    @abc.abstractmethod
+    def parse_pages(self, id: str, soup: bs4.BeautifulSoup) -> None:
         """Parse all pages from a chapter.
         The chapter's info must have already been cached into the database.
 
         Args:
             id: The chapter id.
-            force: Whether or not to re-parse the chapter webpage for pages,
-                regardless of whether or not the pages have already been parsed.
-                Defaults to False.
+            soup: The soup of the chapter's url.
 
         Returns:
-            A list of page URLs.
+            None.
         """
-
-        pages = []
-        soup = utils.get_soup(self.database["chapters"][id]["url"], encoding="utf-8")
-
-        if not (self.is_parsed(id) and not force):
-
-            for link in soup.find_all("img"):
-                if self.page_is_valid(link):
-                    pages.append(link["src"])
-
-            self.database["chapters"][id]["pages"] = pages
-
-        return self.database["chapters"][id]["pages"]
+        raise NotImplementedError
 
     def refresh(self, force: bool = False) -> None:
         """Refresh the database, adding any new chapter info.
@@ -190,10 +178,10 @@ class GenericManga(abc.ABC):
     def _parse_all(self, args):
         force, info = args
         id, title, url = info
-        if self.database["chapters"][id]["pages"] and not force:
+        if self.is_parsed(id) and not force:
             _log.info(f"skipping {id}")
             return
-        pages = self.parse_pages(id, force=True)
+        pages = self.parse_pages(id, utils.get_soup(url, encoding="utf-8"))
         _log.info(f"parsed {id}")
         return id, {"title": title, "url": url, "pages": pages}
 
@@ -209,7 +197,6 @@ class GenericManga(abc.ABC):
         Returns:
             The info of all chapters mapped to their ids.
         """
-        database = self.database
 
         with Pool(threads) as pool:
             results = pool.imap_unordered(
@@ -247,8 +234,6 @@ class GenericManga(abc.ABC):
             ids = self.database["chapters"].keys()
 
         for id in ids:
-            # don't be sus
-            session = requests.Session()
 
             chapter_path = path / id
             if chapter_path.exists() and not force:
@@ -260,6 +245,11 @@ class GenericManga(abc.ABC):
             urls = self.database["chapters"][id]["pages"]
 
             with Pool(threads) as pool:
+                session = requests.Session()
+                # hehe boi
+                session.headers.update(
+                    {"referer": self.database["chapters"][id]["url"]}
+                )
                 responses = pool.imap(session.get, urls)
 
                 for page_number, response in enumerate(responses):

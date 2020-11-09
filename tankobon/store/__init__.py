@@ -4,11 +4,17 @@ Each store is registered to a specific website (see tankobon.store.STORES).
 
 A store consists of a Python module in this directory.
 The module's name should be a normalised version of the website, i.e komi-san.com -> komi_san.py.
-The module should have a Manga class that is a subclass of tankobon.base.GenericManga.
+Example:
 
-This Manga class should override at the very least the page_is_valid and the parse_chapters methods of GenericManga.
-page_is_valid is called with a 'tag' argument with an image element for all the images on a chapter page.
-parse_chapters should yield a three-tuple of (chapter_id, chapter_title, chapter_url) on the inital manga webpage.
+class Manga(GenericManga):
+    # must yield a three-tuple of (chapter_id, chapter_title, chapter_url).
+    def parse_chapters(self):
+        ...
+    # called for every chapter id yielded from parse_chapters, and the soup of its url.
+    def parse_pages(self, id, soup):
+        ...
+
+See the existing stores in this folder for more details.
 """
 
 import importlib
