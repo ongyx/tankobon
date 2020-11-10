@@ -2,13 +2,11 @@
 """Utilities for tankobon.
 """
 
-import random
-import re
 from typing import Union, Optional
 
 import bs4
 import requests
-import requests_random_user_agent
+import requests_random_user_agent  # noqa: F401
 
 Number = Union[int, float]
 

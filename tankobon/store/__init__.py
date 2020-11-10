@@ -18,12 +18,11 @@ See the existing stores in this folder for more details.
 """
 
 import importlib
-import io
 import json
 import logging
 import pathlib
 
-from tankobon.base import GenericManga
+from tankobon.base import GenericManga  # noqa: F401
 
 _log = logging.getLogger("tankobon")
 

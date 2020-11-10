@@ -1,6 +1,5 @@
 # coding: utf8
 
-import json
 import logging
 import pathlib
 from functools import partial
@@ -10,7 +9,7 @@ import click
 import coloredlogs
 
 from tankobon.__version__ import __version__
-from tankobon.store import INDEX, STORES, Store
+from tankobon.store import STORES, Store
 from tankobon.utils import THREADS, get_soup
 
 coloredlogs.install(
@@ -84,7 +83,7 @@ def info(name):
 def update(store_name):
     """Update all previously downloaded mangas."""
     if "/" in store_name:
-        store_name, _, manga_name = store.partition("/")
+        store_name, _, manga_name = store_name.partition("/")
     else:
         manga_name = None
 

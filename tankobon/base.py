@@ -2,21 +2,16 @@
 """tankobon (漫画): Manga downloader and scraper."""
 
 import abc
-import functools
-import json
 import logging
-import multiprocessing as mproc
 import pathlib
-from collections.abc import MutableMapping
 from multiprocessing.pool import ThreadPool as Pool
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import bs4
 import requests
-import requests_random_user_agent
+import requests_random_user_agent  # noqa: F401
 
 from . import utils
-from .exceptions import CacheError
 
 Chapters = Generator[Tuple[str, str, str], None, None]
 
@@ -34,8 +29,8 @@ class GenericManga(abc.ABC):
                 "url": "...",  # manga index (chapter listing)
                 "chapters": {...}  # cached chapter info, automatically generated
             }
-            where 'title' and 'url' must be specified, and 'chapters' may be an empty
-            dict.
+            where 'title' and 'url' must be specified,
+            and 'chapters' may be an empty dict.
         update: Whether or not to download and parse the index, adding any new
             chapters. Defaults to True.
 

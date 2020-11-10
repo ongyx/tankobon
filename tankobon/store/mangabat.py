@@ -2,7 +2,6 @@
 
 import re
 
-from tankobon import utils
 from tankobon.base import GenericManga
 
 

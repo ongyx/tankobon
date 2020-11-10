@@ -1,13 +1,9 @@
 # coding: utf8
 """Bootstrap for Komi Can't Communicate."""
 
-import json
-import pathlib
 import re
-from typing import Generator
 
-from tankobon.base import GenericManga, Chapters
-from tankobon.utils import get_soup
+from tankobon.base import GenericManga
 
 
 class Manga(GenericManga):
