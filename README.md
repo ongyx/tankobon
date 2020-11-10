@@ -1,4 +1,5 @@
 # tankobon
+<!-- markdownlint-disable-file MD026 -->
 
 ![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/logo.jpg "tankobon")
 
@@ -10,6 +11,7 @@
 ![Lines of code](https://img.shields.io/tokei/lines/github/ongyx/tankobon)
 
 ## What?
+
 tankobon is a website scraper for comics and mangas. tankobon relies on **stores**, which define how to parse a website for chapters and chapters for links to the pages themselves.
 (somewhat like youtube-dl extractors.) Currently, the following websites are supported:
 
@@ -19,17 +21,21 @@ tankobon is a website scraper for comics and mangas. tankobon relies on **stores
 I will eventually come up with documentation later on how to create a store.
 
 ## Usage
+
 ```bash
-$ tankobon download 'https://komi-san.com'  # download all chapters
-$ tankobon info 'https://komi-san.com'  # and then get info on the chapters
+tankobon download 'https://komi-san.com'  # download all chapters
+tankobon info 'https://komi-san.com'  # and then get info on the chapters
 ```
 
 ## Install
+
 `python(3) -m pip install tankobon`
 
 ## Build
+
 All my python projects now use [flit](https://pypi.org/project/flit) to build and publish.
 To build, do `flit build`.
 
 ## License
+
 MIT.
