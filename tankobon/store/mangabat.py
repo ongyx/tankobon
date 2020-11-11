@@ -16,17 +16,17 @@ class Manga(GenericManga):
             self.soup.find("meta", property="og:title")["content"]
         )[0]
 
-    def parse_pages(self, id, soup):
+    def parse_pages(self, soup):
 
         pages = []
         pages_div = soup.find("div", class_="container-chapter-reader")
         if not pages_div:
             return
 
-        for link in pages_div.find_all("img"):
+        for link in pages_div.find_all("img", src=True):
             pages.append(link["src"])
 
-        self.add_chapter(id, pages)
+        return pages
 
     def parse_chapters(self):
         for tag in self.soup.find_all("a", class_="chapter-name"):

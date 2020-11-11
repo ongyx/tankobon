@@ -24,7 +24,7 @@ I will eventually come up with documentation later on how to create a store.
 
 ```bash
 tankobon download 'https://komi-san.com'  # download all chapters
-tankobon info 'https://komi-san.com'  # and then get info on the chapters
+tankobon store info 'komi_san/https://komi-san.com'  # and then get info on the chapters
 ```
 
 ## Install

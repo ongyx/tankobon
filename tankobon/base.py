@@ -3,6 +3,7 @@
 
 import abc
 import logging
+import functools
 import pathlib
 from multiprocessing.pool import ThreadPool as Pool
 from typing import Any, Dict, Generator, List, Optional, Tuple
@@ -43,12 +44,11 @@ class GenericManga(abc.ABC):
     DEFAULTS: Dict[str, Any] = {}
 
     def __init__(
-        self,
-        database: Optional[dict] = None,
-        update: bool = True,
+        self, database: Optional[dict] = None, update: bool = True, force: bool = False
     ) -> None:
         self.database = self.DEFAULTS
         self.database.update(database)  # type: ignore
+        self._force = force
 
         if "chapters" not in self.database:
             self.database["chapters"] = {}
@@ -61,25 +61,6 @@ class GenericManga(abc.ABC):
         value = self.database.get(key)
         if value is None:
             raise AttributeError
-        return value
-
-    def query(self, query: str) -> Any:
-        """A much nicer way to get values from a dictionary.
-
-        Args:
-            query: The query, in the format 'key1:keyX' where ':' seperates
-                successive keys and is evaluated to ['key1']['keyX'].
-                Keys must not have ':' in their names.
-        """
-
-        value = None
-
-        if not self.database:
-            raise ValueError("database is empty")
-
-        for key in query.split(":"):
-            value = value or self.database
-            value = value[key]
         return value
 
     @staticmethod
@@ -110,19 +91,6 @@ class GenericManga(abc.ABC):
         except KeyError:
             return False
 
-    def add_chapter(self, id: str, pages: List[str]) -> None:
-        """Add a chapter to the manga.
-
-        Args:
-            id: The chapter id.
-            pages: A list of page URLs.
-
-        Returns:
-            None.
-        """
-
-        self.database["chapters"][id]["pages"] = pages
-
     @abc.abstractmethod
     def parse_chapters(self) -> Chapters:
         """Parse all chapters from the soup.
@@ -134,20 +102,19 @@ class GenericManga(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def parse_pages(self, id: str, soup: bs4.BeautifulSoup) -> None:
+    def parse_pages(self, soup: bs4.BeautifulSoup) -> List[str]:
         """Parse all pages from a chapter.
         The chapter's info must have already been cached into the database.
 
         Args:
-            id: The chapter id.
             soup: The soup of the chapter's url.
 
         Returns:
-            None.
+            A list of the chapter's pages.
         """
         raise NotImplementedError
 
-    def refresh(self, force: bool = False) -> None:
+    def refresh(self) -> None:
         """Refresh the database, adding any new chapter info.
         Does not download the chapter webpages (under the 'pages' key).
 
@@ -156,7 +123,7 @@ class GenericManga(abc.ABC):
         """
 
         for id, title, url in self.parse_chapters():
-            if self.is_parsed(id) and not force:
+            if self.is_parsed(id) and not self._force:
                 continue
             self.database["chapters"][id] = {"url": url, "title": title, "pages": []}
 
@@ -171,23 +138,20 @@ class GenericManga(abc.ABC):
             yield id, chapter["title"], chapter["url"]
 
     def _parse_all(self, args):
-        force, info = args
-        id, title, url = info
-        if self.is_parsed(id) and not force:
+        id, title, url = args
+        if self.is_parsed(id) and not self._force:
             _log.info(f"skipping {id}")
             return
-        pages = self.parse_pages(id, utils.get_soup(url, encoding="utf-8"))
+        pages = self.parse_pages(utils.get_soup(url, encoding="utf-8"))
         _log.info(f"parsed {id}")
         return id, {"title": title, "url": url, "pages": pages}
 
-    def parse_all(self, threads: int = utils.THREADS, force: bool = False) -> dict:
+    def parse_all(self, threads: int = utils.THREADS) -> dict:
         """Parse all chapters, adding their page URLs to their info.
 
         Args:
             threads: How many threads to use to speed up parsing.
                 Defaults to THREADS (8).
-            force: Whether or not to parse all chapters, regardless of whether or not
-                the chapter's pages have already been parsed. Defaults to False.
 
         Returns:
             The info of all chapters mapped to their ids.
@@ -195,14 +159,14 @@ class GenericManga(abc.ABC):
 
         with Pool(threads) as pool:
             results = pool.imap_unordered(
-                self._parse_all, ((force, c) for c in self.existing_chapters)  # type: ignore
+                self._parse_all, self.existing_chapters  # type: ignore
             )
 
             for result in results:
                 if result is None:
                     continue
                 id, chapter = result
-                self.database[id] = chapter
+                self.database["chapters"][id] = chapter
 
         return self.database
 

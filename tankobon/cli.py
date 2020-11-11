@@ -57,23 +57,27 @@ def list():
             click.echo(f"{spacing}{m} ({t['title']})")
 
 
+def _print_chapter_info(database):
+    for key in ("title", "url"):
+        click.echo(f"{key.title()}: {database[key]}")
+    click.echo(f"# of pages: {len(database['pages'])}")
+
+
 @store.command()
 @click.argument("name")
-def info(name):
+@click.option("-c", "--chapter", help="get info on a specific chapter", default="none")
+def info(name, chapter):
     """Show infomation on a specific manga, where name is in the format 'store_name/manga_name'."""
     store_name, _, manga_name = name.partition("/")
     database = Store._index["stores"][store_name][manga_name]
-    for key in ("title", "url"):
-        click.echo(f"{key.title()}: {database[key]}")
-    click.echo(f"# of chapters: {len(database['chapters'])}")
-    click.echo("chapters:")
-    for k in sorted(database["chapters"], key=float):
-        v = database["chapters"][k]
-        spacing = len(k)
-        click.echo(f"{k}:")
-        for i in ("title", "url"):
-            click.echo(f"{' ' * spacing}{i.title()}: {v[i]}")
-        click.echo(f"{' ' * spacing}# of pages: {len(v['pages'])}")
+
+    if chapter != "none":
+        _print_chapter_info(database["chapters"][chapter])
+
+    else:
+        for k in sorted(database["chapters"], key=float):
+            _print_chapter_info(database["chapters"][k])
+            click.echo("")
 
 
 @store.command()
@@ -125,25 +129,41 @@ def update(store_name):
     help="which chapters to download, seperated by slashes",
     default="all",
 )
-def download(url, path, threads, refresh, chapters):
+@click.option(
+    "-p",
+    "--parse",
+    help="only parse all pages without downloading them",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "-f",
+    "--force",
+    help="reparse all chapters and pages, regardless whether or not they have already been parsed",
+    is_flag=True,
+    default=False,
+)
+def download(url, path, threads, refresh, chapters, parse, force):
     """Download a manga from url."""
+    # the url acts as the id here
     store = Store(STORES[urlparse(url).netloc], url)
-    if store.database:
-        manga = store.manga(store.database)
-    else:
-        manga = store.manga({"url": url})
+    if not store.database:
+        store.database = {"url": url}
+
+    manga = store.manga(store.database, force=force)
 
     if chapters != "all":
         chapters = chapters.split("/")
         for chapter in chapters:
-            manga.parse_pages(
-                chapter, get_soup(manga.database["chapters"][chapter]["url"])
-            )
+            manga.parse_pages(get_soup(manga.database["chapters"][chapter]["url"]))
     else:
         chapters = None
         manga.parse_all()
 
-    manga.download_chapters(pathlib.Path(path), chapters)
+    if not parse:
+        manga.download_chapters(pathlib.Path(path), chapters)
+
+    _ = manga.database.pop("url")
     store.database = manga.database
     store.close()
 
