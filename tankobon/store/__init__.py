@@ -10,8 +10,9 @@ class Manga(GenericManga):
     # must yield a three-tuple of (chapter_id, chapter_title, chapter_url).
     def parse_chapters(self):
         ...
-    # called for every chapter id yielded from parse_chapters, and the soup of its url.
-    def parse_pages(self, id, soup):
+    # must return a list of page urls where soup is the BeautifulSoup of the chapter
+    # url.
+    def parse_pages(self, soup):
         ...
 
 See the existing stores in this folder for more details.

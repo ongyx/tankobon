@@ -8,7 +8,7 @@ from tankobon.base import GenericManga
 class Manga(GenericManga):
 
     RE_TITLE = re.compile(r"(.*) Manga *\|")
-    RE_CHAPTER = re.compile(r"Chapter (\d+) ?(.*)")
+    RE_CHAPTER = re.compile(r"Chapter (\d+)\:? ?([\w \(\)]*)")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
