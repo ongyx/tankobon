@@ -97,9 +97,11 @@ class Store(object):
 
     @property
     def database(self):
-        return (
+        database = (
             self._index["stores"].setdefault(self.store, {}).setdefault(self.name, {})
         )
+        database["url"] = self.name
+        return database
 
     @database.setter
     def database(self, value):

@@ -63,19 +63,6 @@ class GenericManga(abc.ABC):
             raise AttributeError
         return value
 
-    @staticmethod
-    def is_link(tag: bs4.element.Tag) -> bool:
-        """Check whether a BeautifulSoup tag is a link.
-
-        Args:
-            tag: The tag.
-
-        Returns:
-            True if so, otherwise False.
-        """
-
-        return (tag.name == "a") and (tag.get("href") is not None)
-
     def is_parsed(self, id: str) -> bool:
         """Check whether a chapter has already been parsed to get its page URLs.
 

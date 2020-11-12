@@ -163,7 +163,7 @@ def download(url, path, threads, refresh, chapters, parse, force):
     if not parse:
         manga.download_chapters(pathlib.Path(path), chapters)
 
-    _ = manga.database.pop("url")
+    _ = manga.database.pop("url")  # we use the url as the manga id anyway..
     store.database = manga.database
     store.close()
 
