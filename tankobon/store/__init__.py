@@ -22,8 +22,10 @@ import importlib
 import json
 import logging
 import pathlib
+from typing import Optional, Union
 
 from tankobon.base import GenericManga  # noqa: F401
+from tankobon.exceptions import StoreError
 
 _log = logging.getLogger("tankobon")
 
@@ -42,21 +44,16 @@ class Store(object):
     Usage:
 
     manga_store = Store('store_name', 'manga_name')
-    # the raw Manga object
-    Manga = manga_store.manga
-    # load database
-    manga = Manga(
-        manga_store.database,
-        ...  # other args
-    )
+    Manga = manga_store.manga  # the raw Manga object
+    manga = Manga(manga_store.database)  # load database
 
     with Store('store_name', 'manga_name') as manga:
-        # use the manga object directly
-        manga.parse_all()
+        manga.parse_all()  # use the manga object directly
 
     Args:
         store: The store name.
         name: The manga name to get from the store. Defaults to ''.
+        index_path: The path to the index file. Defaults to INDEX.
 
     Attributes:
         store (str): store name.
@@ -72,10 +69,17 @@ class Store(object):
         if module.stem != "__init__":
             available.add(module.stem)
 
+    # preload first, so we don't have to load again every time this is initalised
     with INDEX.open() as f:
         _index = json.load(f)
+        _index_path = INDEX
 
-    def __init__(self, store: str, name: str = "") -> None:
+    def __init__(
+        self,
+        store: str,
+        name: str = "",
+        index_path: Optional[Union[str, pathlib.Path]] = None,
+    ) -> None:
         if store not in self.available:
             raise ValueError(f"store '{store}' does not exist")
 
@@ -87,6 +91,18 @@ class Store(object):
         self.store = store
         self.name = name
         self.pyfile = STORE_PATH / f"{store}.py"
+
+        if index_path is not None:
+            self._index_path = pathlib.Path(index_path)
+            self._index = json.load(self._index_path.open())
+
+        if self.store not in self._index["stores"]:
+            raise StoreError(f"store {store} does not exist in index")
+        else:
+            if self.name not in self._index["stores"][self.store]:
+                raise StoreError(
+                    f"manga {self.name} does not exist in store {self.store}"
+                )
 
         _log.debug("initalised store for %s", store)
 
@@ -112,7 +128,7 @@ class Store(object):
         del self._index["stores"][self.store][self.name]
 
     def close(self):
-        with INDEX.open(mode="w") as f:
+        with self._index_path.open(mode="w") as f:
             json.dump(self._index, f, indent=4)
 
     def __enter__(self):

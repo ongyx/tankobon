@@ -1,9 +1,13 @@
 # coding: utf8
 
 
-class ManhuaError(Exception):
+class TankobonError(Exception):
     pass
 
 
-class CacheError(ManhuaError):
+class CacheError(TankobonError):
+    pass
+
+
+class StoreError(TankobonError):
     pass

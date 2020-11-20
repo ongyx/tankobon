@@ -2,6 +2,7 @@
 """Utilities for tankobon.
 """
 
+import re
 from typing import Union, Optional
 
 import bs4
@@ -33,6 +34,24 @@ def get_file_extension(response: requests.models.Response) -> str:
 
     content_type = response.headers["Content-Type"].partition(";")[0]
     return f".{FILE_EXTENSIONS[content_type]}"
+
+
+def _is_valid_char(char):
+    return char.isalnum()
+
+
+def sanitize_filename(name: str) -> str:
+    """Sanitise a name so it can be used as a filename.
+    Args:
+        name: The name to sanitise.
+    Returns:
+        The sanitised name as a string.
+    """
+
+    sanitised = "".join([c if _is_valid_char(c) else "_" for c in name])
+
+    # remove duplicate underscores
+    return re.sub("_{2,}", "_", sanitised)
 
 
 def get_soup(
