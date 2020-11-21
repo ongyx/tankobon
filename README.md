@@ -19,6 +19,16 @@ tankobon is a website scraper for comics and mangas. tankobon relies on **stores
 - `m.mangabat.com`
 
 I will eventually come up with documentation later on how to create a store.
+See `tankobon/stores/` for these example stores.
+
+## Index Compatibility
+
+Between version v3.1.0a1 and v3.2.0a0, the location of the index file has moved from site-packages to `~/.tankobon/index/json`, specific to each install of tankobon.
+
+## Todo
+
+- download pre-parsed indexes from a special Github repo (tankobon-index?)
+- create GUI to make downloading easier (like youtube-DLG)
 
 ## Usage
 

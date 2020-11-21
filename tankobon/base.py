@@ -44,7 +44,7 @@ class GenericManga(abc.ABC):
     DEFAULTS: Dict[str, Any] = {}
 
     def __init__(
-        self, database: Optional[dict] = None, update: bool = True, force: bool = False
+        self, database: dict = {}, update: bool = True, force: bool = False
     ) -> None:
         self.database = self.DEFAULTS
         self.database.update(database)  # type: ignore
@@ -56,6 +56,11 @@ class GenericManga(abc.ABC):
         self.soup = utils.get_soup(self.database["url"])
         if update:
             self.refresh()
+
+        try:
+            self.database["cover"] = self.cover
+        except AttributeError:
+            pass
 
     def __getattr__(self, key):
         value = self.database.get(key)

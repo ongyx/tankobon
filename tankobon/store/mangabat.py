@@ -16,6 +16,10 @@ class Manga(GenericManga):
             self.soup.find("meta", property="og:title")["content"]
         )[0]
 
+    @property
+    def cover(self):
+        return self.soup.find("meta", property="og:image")["content"]
+
     def parse_pages(self, soup):
 
         pages = []
@@ -30,8 +34,8 @@ class Manga(GenericManga):
 
     def parse_chapters(self):
         for tag in self.soup.find_all("a", class_="chapter-name"):
-            href = tag.get("href")
-            title = tag.text
+            href = str(tag.get("href"))
+            title = str(tag.text)
 
             match = self.RE_CHAPTER.findall(title)
 

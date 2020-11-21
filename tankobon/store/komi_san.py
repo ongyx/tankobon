@@ -19,6 +19,12 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
+    @property
+    def cover(self):
+        return self.soup.find("img", class_="wp-image-1419", srcset=True)[
+            "srcset"
+        ].split()[0]
+
     def parse_pages(self, soup):
         pages = []
         # pages_div = soup.find("div", class_="post-body entry-content")
@@ -37,12 +43,10 @@ class Manga(GenericManga):
         if section is not None:
             section.decompose()
 
-        for tag in self.soup.find_all("a"):
+        for tag in self.soup.find_all("a", href=True):
 
-            if not self.is_link(tag):
-                continue
-            href = tag.get("href")
-            title = tag.text
+            href = str(tag.get("href"))
+            title = str(tag.text)
 
             match = self.RE_TITLE.findall(title)
 

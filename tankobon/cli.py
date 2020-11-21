@@ -147,26 +147,23 @@ def download(url, path, threads, refresh, chapters, parse, force):
     """Download a manga from url to path."""
     # the url acts as the id here
     path = pathlib.Path(path)
+
     store = Store(STORES[urlparse(url).netloc], url)
-    if not store.database:
-        store.database = {"url": url}
+    with store as manga:
 
-    manga = store.manga(store.database, force=force)
+        if chapters != "all":
+            chapters = chapters.split("/")
+            for chapter in chapters:
+                manga.parse_pages(get_soup(manga.database["chapters"][chapter]["url"]))
+        else:
+            chapters = None
+            manga.parse_all()
 
-    if chapters != "all":
-        chapters = chapters.split("/")
-        for chapter in chapters:
-            manga.parse_pages(get_soup(manga.database["chapters"][chapter]["url"]))
-    else:
-        chapters = None
-        manga.parse_all()
+        if not parse:
+            manga.download_chapters(path, chapters)
 
-    if not parse:
-        manga.download_chapters(path, chapters)
-
-    _ = manga.database.pop("url")  # we use the url as the manga id anyway..
-    store.database = manga.database
-    store.close()
+        _ = manga.database.pop("url")  # we use the url as the manga id anyway..
+        store.database = manga.database
 
 
 if __name__ == "__main__":
