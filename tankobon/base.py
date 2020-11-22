@@ -2,13 +2,16 @@
 """tankobon (漫画): Manga downloader and scraper."""
 
 import abc
-import logging
 import functools
+import io
+import logging
 import pathlib
 from multiprocessing.pool import ThreadPool as Pool
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import bs4
+import fpdf
+import natsort
 import requests
 import requests_random_user_agent  # noqa: F401
 
@@ -17,6 +20,15 @@ from . import utils
 Chapters = Generator[Tuple[str, str, str], None, None]
 
 _log = logging.getLogger("tankobon")
+
+
+class FPDF(fpdf.FPDF):
+    # so we can use buffers
+    def load_resource(self, reason, filename):
+        if reason == "image" and isinstance(filename, io.BytesIO):
+            return filename
+        else:
+            return super().load_resource(reason, filename)
 
 
 class GenericManga(abc.ABC):
@@ -50,17 +62,14 @@ class GenericManga(abc.ABC):
         self.database.update(database)  # type: ignore
         self._force = force
 
-        if "chapters" not in self.database:
-            self.database["chapters"] = {}
+        self.database.setdefault("chapters", {})
 
         self.soup = utils.get_soup(self.database["url"])
         if update:
             self.refresh()
 
-        try:
-            self.database["cover"] = self.cover
-        except AttributeError:
-            pass
+        self.database["cover"] = self.cover()
+        self.database["volumes"] = self.parse_volumes()
 
     def __getattr__(self, key):
         value = self.database.get(key)
@@ -82,6 +91,9 @@ class GenericManga(abc.ABC):
             return bool(self.database["chapters"][id]["pages"])
         except KeyError:
             return False
+
+    def sorted(self) -> List[str]:
+        return natsort.natsorted(self.database["chapters"])
 
     @abc.abstractmethod
     def parse_chapters(self) -> Chapters:
@@ -105,6 +117,28 @@ class GenericManga(abc.ABC):
             A list of the chapter's pages.
         """
         raise NotImplementedError
+
+    def cover(self) -> str:
+        """Get the cover image of the manga.
+
+        Returns:
+            The url to the cover.
+        """
+        return self.database["chapters"][self.sorted()[0]][0]
+
+    def parse_volumes(self) -> Dict[str, List[str]]:
+        """Parse chapter ids into a volume representation like so:
+        {
+            'volume_id1': [...],  # list of chapter ids
+            'volume_id2': [...],
+            ...  # and so on.
+        }
+        By default this returns all the chapter ids (as one volume.)
+
+        Returns:
+            A map of volume ids to a list of chapter ids.
+        """
+        return {"1": [i for i in self.database["chapters"]]}
 
     def refresh(self) -> None:
         """Refresh the database, adding any new chapter info.

@@ -5,6 +5,8 @@ import re
 
 from tankobon.base import GenericManga
 
+_RE_OMAKE = re.compile(r"\.\d")
+
 
 class Manga(GenericManga):
 
@@ -19,11 +21,28 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
-    @property
     def cover(self):
         return self.soup.find("img", class_="wp-image-1419", srcset=True)[
             "srcset"
         ].split()[0]
+
+    def parse_volumes(self):
+        chapters = self.sorted()
+        volumes = {}
+        omake = []
+        for index, chapter in enumerate(chapters):
+            if _RE_OMAKE.match(chapter):
+                omake.append(index)
+
+        for volume, end in enumerate(omake):
+            if end == 0:
+                start = 0
+            else:
+                start = omake[end - 1]
+
+            volumes[volume] = chapters[start:end]
+
+        return volumes
 
     def parse_pages(self, soup):
         pages = []

@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 import click
 import coloredlogs
+import natsort
 
 from tankobon.__version__ import __version__
 from tankobon.store import STORES, Store
@@ -50,7 +51,7 @@ def store():
 @store.command()
 def list():
     """List all stores available, and their downloaded mangas."""
-    for k, v in Store._index["stores"].items():
+    for k, v in Store._index.items():
         click.echo(f"{k}/")
         spacing = " " * len(k)
         for m, t in v.items():
@@ -69,13 +70,13 @@ def _print_chapter_info(database):
 def info(name, chapter):
     """Show infomation on a specific manga, where name is in the format 'store_name/manga_name'."""
     store_name, _, manga_name = name.partition("/")
-    database = Store._index["stores"][store_name][manga_name]
+    database = Store._index[store_name][manga_name]
 
     if chapter != "none":
         _print_chapter_info(database["chapters"][chapter])
 
     else:
-        for k in sorted(database["chapters"], key=float):
+        for k in natsort.natsorted(database["chapters"]):
             _print_chapter_info(database["chapters"][k])
             click.echo("")
 
@@ -93,7 +94,7 @@ def update(store_name):
 
     if store_name == "all":
         _log.info("updating all mangas")
-        for store, mangas in Store._index["stores"].items():
+        for store, mangas in Store._index.items():
             for manga in mangas:
                 with Store(store, manga) as m:
                     _log.info(f"updating {store}:{manga}")
@@ -103,7 +104,7 @@ def update(store_name):
         if manga_name:
             mangas = [manga_name]
         else:
-            mangas = Store._index["stores"][store_name]
+            mangas = Store._index[store_name]
 
         for manga in mangas:
             with Store(store_name, manga) as m:
