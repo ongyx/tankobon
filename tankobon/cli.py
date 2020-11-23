@@ -144,7 +144,14 @@ def update(store_name):
     is_flag=True,
     default=False,
 )
-def download(url, path, threads, refresh, chapters, parse, force):
+@click.option(
+    "-d",
+    "--document",
+    help="create a PDF document for each volume of the manga",
+    is_flag=True,
+    default=False,
+)
+def download(url, path, threads, refresh, chapters, parse, force, document):
     """Download a manga from url to path."""
     # the url acts as the id here
     path = pathlib.Path(path)
@@ -161,7 +168,7 @@ def download(url, path, threads, refresh, chapters, parse, force):
             manga.parse_all()
 
         if not parse:
-            manga.download_chapters(path, chapters)
+            manga.download_chapters(path, chapters, as_pdf=document)
 
         _ = manga.database.pop("url")  # we use the url as the manga id anyway..
         store.database = manga.database

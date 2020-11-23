@@ -6,8 +6,9 @@ import functools
 import io
 import logging
 import pathlib
+import tempfile
 from multiprocessing.pool import ThreadPool as Pool
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import bs4
 import fpdf
@@ -20,15 +21,6 @@ from . import utils
 Chapters = Generator[Tuple[str, str, str], None, None]
 
 _log = logging.getLogger("tankobon")
-
-
-class FPDF(fpdf.FPDF):
-    # so we can use buffers
-    def load_resource(self, reason, filename):
-        if reason == "image" and isinstance(filename, io.BytesIO):
-            return filename
-        else:
-            return super().load_resource(reason, filename)
 
 
 class GenericManga(abc.ABC):
@@ -67,9 +59,8 @@ class GenericManga(abc.ABC):
         self.soup = utils.get_soup(self.database["url"])
         if update:
             self.refresh()
-
-        self.database["cover"] = self.cover()
-        self.database["volumes"] = self.parse_volumes()
+            self.database["cover"] = self.cover()
+            self.database["volumes"] = self.parse_volumes()
 
     def __getattr__(self, key):
         value = self.database.get(key)
@@ -138,7 +129,7 @@ class GenericManga(abc.ABC):
         Returns:
             A map of volume ids to a list of chapter ids.
         """
-        return {"1": [i for i in self.database["chapters"]]}
+        return {"0": [i for i in self.database["chapters"]]}
 
     def refresh(self) -> None:
         """Refresh the database, adding any new chapter info.
@@ -198,10 +189,11 @@ class GenericManga(abc.ABC):
 
     def download_chapters(
         self,
-        path: pathlib.Path,
+        path: Union[str, pathlib.Path],
         ids: Optional[List[str]] = None,
         force: bool = False,
         threads: int = utils.THREADS,
+        as_pdf: bool = False,
     ) -> None:
         """Download chapters, caching its pages on disk.
         Ignores any existing chapter data on disk (downloads anyway).
@@ -213,12 +205,19 @@ class GenericManga(abc.ABC):
                 already downloaded. Defaults to False.
             threads: The number of threads to use to download the pages.
                 Defaults to utils.THREADS (8).
+            as_pdf: Whether or not to make a pdf for each volume, i.e '0.pdf', '1.pdf', etc.
+                Defaults to False.
         """
+
+        path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
+        pdf_volumes: Dict[str, List[str]] = {}
 
         if ids is None:
             ids = self.database["chapters"].keys()
 
         for id in ids:
+
+            pdf_volumes[id] = []
 
             chapter_path = path / id
             if chapter_path.exists() and not force:
@@ -247,3 +246,16 @@ class GenericManga(abc.ABC):
 
                     with page_path.open(mode="wb+") as f:
                         f.write(response.content)
+
+                    pdf_volumes[id] += str(page_path)
+
+        if as_pdf:
+            for volume, chapters in self.database["volumes"]:
+                pdf = fpdf.FPDF()
+
+                for chapter in chapters:
+                    for page in pdf_volumes[chapter]:
+                        pdf.add_page()
+                        pdf.image(page)
+
+                pdf.output(str(path / f"{volume}.pdf"), "F")

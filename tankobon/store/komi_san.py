@@ -5,7 +5,7 @@ import re
 
 from tankobon.base import GenericManga
 
-_RE_OMAKE = re.compile(r"\.\d")
+_RE_OMAKE = re.compile(r"\d+\.\d")
 
 
 class Manga(GenericManga):
@@ -29,18 +29,16 @@ class Manga(GenericManga):
     def parse_volumes(self):
         chapters = self.sorted()
         volumes = {}
-        omake = []
-        for index, chapter in enumerate(chapters):
-            if _RE_OMAKE.match(chapter):
-                omake.append(index)
+        omake = [i for i, c in enumerate(chapters) if _RE_OMAKE.match(c)]
 
-        for volume, end in enumerate(omake):
-            if end == 0:
-                start = 0
+        # first chapter is the oneshot, so skip
+        volumes["0"] = [chapters.pop(0)]
+
+        for volume, end in enumerate(omake, start=1):
+            if volume == 1:
+                volumes[volume] = chapters[: end + 1]
             else:
-                start = omake[end - 1]
-
-            volumes[volume] = chapters[start:end]
+                volumes[volume] = chapters[omake[volume - 2] + 1 : end]
 
         return volumes
 
