@@ -56,10 +56,14 @@ class GenericManga(abc.ABC):
 
         self.database.setdefault("chapters", {})
 
-        self.soup = utils.get_soup(self.database["url"])
+        self.session = requests.Session()
+        # hehe boi
+        self.session.headers.update({"referer": self.database["chapters"][id]["url"]})
+
+        self.soup = utils.get_soup(self.database["url"], session=self.session)
         if update:
             self.refresh()
-            self.database["cover"] = self.cover()
+            self.database["covers"] = self.cover()
             self.database["volumes"] = self.parse_volumes()
 
     def __getattr__(self, key):
@@ -109,27 +113,29 @@ class GenericManga(abc.ABC):
         """
         raise NotImplementedError
 
-    def cover(self) -> str:
-        """Get the cover image of the manga.
-
-        Returns:
-            The url to the cover.
-        """
-        return self.database["chapters"][self.sorted()[0]][0]
-
     def parse_volumes(self) -> Dict[str, List[str]]:
         """Parse chapter ids into a volume representation like so:
         {
-            'volume_id1': [...],  # list of chapter ids
-            'volume_id2': [...],
+            "0": {
+                "chapters": [...],  # list of chapter ids
+                "cover": ...  # the volume cover
+            },
             ...  # and so on.
         }
-        By default this returns all the chapter ids (as one volume.)
+        By default this returns the chapters split into chunks of 20.
+        The "cover" key is optional. If not provided, the cover is set as
+        the first page of the first chapter of the volume.
 
         Returns:
             A map of volume ids to a list of chapter ids.
         """
-        return {"0": [i for i in self.database["chapters"]]}
+        chapters = self.sorted()
+        return {
+            str(v): c
+            for v, c in enumerate(
+                [chapters[x : x + 20] for x in range(0, len(chapters), 20)]
+            )
+        }
 
     def refresh(self) -> None:
         """Refresh the database, adding any new chapter info.
@@ -159,7 +165,9 @@ class GenericManga(abc.ABC):
         if self.is_parsed(id) and not self._force:
             _log.info(f"skipping {id}")
             return
-        pages = self.parse_pages(utils.get_soup(url, encoding="utf-8"))
+        pages = self.parse_pages(
+            utils.get_soup(url, encoding="utf-8", session=self.session)
+        )
         _log.info(f"parsed {id}")
         return id, {"title": title, "url": url, "pages": pages}
 
@@ -229,29 +237,28 @@ class GenericManga(abc.ABC):
             urls = self.database["chapters"][id]["pages"]
 
             with Pool(threads) as pool:
-                session = requests.Session()
-                # hehe boi
-                session.headers.update(
-                    {"referer": self.database["chapters"][id]["url"]}
-                )
-                responses = pool.imap(session.get, urls)
+                responses = pool.imap(self.session.get, urls)
 
                 for page_number, response in enumerate(responses):
                     _log.debug("downloading page %s", page_number)
 
-                    page_path = (
-                        chapter_path
-                        / f"{page_number}{utils.get_file_extension(response)}"
-                    )
-
-                    with page_path.open(mode="wb+") as f:
-                        f.write(response.content)
-
+                    page_path = chapter_path / f"{page_number}"
+                    utils.save_response(page_path, response)
                     pdf_volumes[id] += str(page_path)
 
         if as_pdf:
-            for volume, chapters in self.database["volumes"]:
+            for volume, volume_info in self.database["volumes"]:
                 pdf = fpdf.FPDF()
+                chapters = volume_info["chapters"]
+                if "cover" in volume_info:
+                    cover_path = str(
+                        utils.save_response(
+                            path / f"cover_{volume}",
+                            self.session.get(volume_info["cover"]),
+                        )
+                    )
+                    pdf.add_page()
+                    pdf.image(cover_path)
 
                 for chapter in chapters:
                     for page in pdf_volumes[chapter]:

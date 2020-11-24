@@ -2,6 +2,7 @@
 """Utilities for tankobon.
 """
 
+import pathlib
 import re
 from typing import Union, Optional
 
@@ -55,7 +56,11 @@ def sanitize_filename(name: str) -> str:
 
 
 def get_soup(
-    *args, encoding: Optional[str] = None, parser: str = BSOUP_PARSER, **kwargs
+    *args,
+    encoding: Optional[str] = None,
+    parser: str = BSOUP_PARSER,
+    session: Optional[requests.Session] = None,
+    **kwargs,
 ) -> bs4.BeautifulSoup:
     """Get a url as a BeautifulSoup.
 
@@ -65,13 +70,37 @@ def get_soup(
             Defaults to the autodetected encoding (by requests).
         parser: The parser to use.
             Must be 'html.parser', 'html5lib' or 'lxml'.
+        session: The session to use to download the soup.
+            Defaults to None.
         **kwargs: See get_url.
     """
 
-    response = requests.get(*args, **kwargs)
+    if session is not None:
+        response = session.get(*args, **kwargs)
+    else:
+        response = requests.get(*args, **kwargs)
+
     if encoding is not None:
         html_text = response.content.decode(encoding)
     else:
         html_text = response.text
 
     return bs4.BeautifulSoup(html_text, parser)
+
+
+def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.Path:
+    """Save a Requests response at path with the correct file extension.
+
+    Args:
+        path: The path where to save the file at.
+        res: The response.
+
+    Returns:
+        The full path to the file.
+    """
+
+    path = path.with_suffix(get_file_extension(res))
+    with path.open("wb+") as f:
+        f.write(res.content)
+
+    return path

@@ -1,17 +1,15 @@
 # coding: utf8
-"""Bootstrap for Komi Can't Communicate."""
 
 import re
 
 from tankobon.base import GenericManga
-
-_RE_OMAKE = re.compile(r"\d+\.\d")
 
 
 class Manga(GenericManga):
 
     IMGHOST = "blogspot.com"
     RE_TITLE = re.compile(r"(?:.*)Chapter (\d+(?:\.\d)?) *[:\-] *(.+)\Z")
+    RE_OMAKE = re.compile(r"\d+\.\d")
     # not used, kept here for reference
     RE_URL = re.compile(r"(?:.*)?chapter-(\d+(?:-\d)?)-([\w\-]*)/?\Z")
 
@@ -21,38 +19,17 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
-    def cover(self):
-        return self.soup.find("img", class_="wp-image-1419", srcset=True)[
-            "srcset"
-        ].split()[0]
-
-    def parse_volumes(self):
-        chapters = self.sorted()
-        volumes = {}
-        omake = [i for i, c in enumerate(chapters) if _RE_OMAKE.match(c)]
-
-        # first chapter is the oneshot, so skip
-        volumes["0"] = [chapters.pop(0)]
-
-        for volume, end in enumerate(omake, start=1):
-            if volume == 1:
-                volumes[volume] = chapters[: end + 1]
-            else:
-                volumes[volume] = chapters[omake[volume - 2] + 1 : end]
-
-        return volumes
-
     def parse_pages(self, soup):
         pages = []
         # pages_div = soup.find("div", class_="post-body entry-content")
         # if not pages_div:
         #    return
 
-        for link in soup.find_all("img", src=True):
-            if "blogspot.com" in link["src"]:
-                pages.append(link["src"])
-
-        return pages
+        return [
+            link["src"]
+            for link in soup.find_all("img", src=True)
+            if "blogspot.com" in link["src"]
+        ]
 
     def parse_chapters(self):
         # get rid of section

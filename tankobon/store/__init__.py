@@ -40,6 +40,7 @@ INDEX = STORE_PATH / "index.json"
 STORES = {
     "komi-san.com": "komi_san",
     "m.mangabat.com": "mangabat",
+    "mangadex.org": "mangadex",
 }
 
 STORE_PATH.mkdir(exist_ok=True)
@@ -133,7 +134,7 @@ class Store(object):
             json.dump(self._index, f, indent=2)
 
     def __enter__(self):
-        return self.manga(self.database)
+        return self.manga(database=self.database)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()

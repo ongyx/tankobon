@@ -16,9 +16,6 @@ class Manga(GenericManga):
             self.soup.find("meta", property="og:title")["content"]
         )[0]
 
-    def cover(self):
-        return self.soup.find("meta", property="og:image")["content"]
-
     def parse_pages(self, soup):
 
         pages = []
