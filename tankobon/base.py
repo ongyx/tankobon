@@ -7,6 +7,7 @@ import io
 import logging
 import pathlib
 import tempfile
+import time
 from multiprocessing.pool import ThreadPool as Pool
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
@@ -16,7 +17,8 @@ import natsort
 import requests
 import requests_random_user_agent  # noqa: F401
 
-from . import utils
+from tankobon import utils
+from tankobon.exceptions import TankobonError
 
 Chapters = Generator[Tuple[str, str, str], None, None]
 
@@ -58,12 +60,11 @@ class GenericManga(abc.ABC):
 
         self.session = requests.Session()
         # hehe boi
-        self.session.headers.update({"referer": self.database["chapters"][id]["url"]})
+        self.session.headers.update({"referer": self.database["url"]})
 
         self.soup = utils.get_soup(self.database["url"], session=self.session)
         if update:
             self.refresh()
-            self.database["covers"] = self.cover()
             self.database["volumes"] = self.parse_volumes()
 
     def __getattr__(self, key):
@@ -201,7 +202,7 @@ class GenericManga(abc.ABC):
         ids: Optional[List[str]] = None,
         force: bool = False,
         threads: int = utils.THREADS,
-        as_pdf: bool = False,
+        cooldown: int = 2,
     ) -> None:
         """Download chapters, caching its pages on disk.
         Ignores any existing chapter data on disk (downloads anyway).
@@ -213,19 +214,28 @@ class GenericManga(abc.ABC):
                 already downloaded. Defaults to False.
             threads: The number of threads to use to download the pages.
                 Defaults to utils.THREADS (8).
-            as_pdf: Whether or not to make a pdf for each volume, i.e '0.pdf', '1.pdf', etc.
-                Defaults to False.
+            cooldown: How long to wait before downloading each page.
+                Defaults to 2.
         """
 
         path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
-        pdf_volumes: Dict[str, List[str]] = {}
+        self._image_paths: Dict[str, List[str]] = {}
 
         if ids is None:
             ids = self.database["chapters"].keys()
 
+        def session_get(*args, **kwargs):
+            nonlocal self
+            nonlocal cooldown
+            time.sleep(cooldown)
+            try:
+                return self.session.get(*args, **kwargs)
+            except requests.exceptions.ConnectionError as e:
+                raise requests.exceptions.ConnectionError(e, args, kwargs)
+
         for id in ids:
 
-            pdf_volumes[id] = []
+            self._image_paths[id] = []
 
             chapter_path = path / id
             if chapter_path.exists() and not force:
@@ -237,32 +247,61 @@ class GenericManga(abc.ABC):
             urls = self.database["chapters"][id]["pages"]
 
             with Pool(threads) as pool:
-                responses = pool.imap(self.session.get, urls)
+                responses = pool.imap(session_get, urls)
 
                 for page_number, response in enumerate(responses):
-                    _log.debug("downloading page %s", page_number)
+                    _log.debug("downloaded page %s from %s", page_number, response.url)
 
                     page_path = chapter_path / f"{page_number}"
-                    utils.save_response(page_path, response)
-                    pdf_volumes[id] += str(page_path)
+                    try:
+                        utils.save_response(page_path, response)
+                    except KeyError:
+                        # there is no content type (text/html, problably)
+                        raise TankobonError(f"page '{response.url}' is not an image")
+                    self._image_paths[id] += str(page_path)
 
-        if as_pdf:
-            for volume, volume_info in self.database["volumes"]:
-                pdf = fpdf.FPDF()
-                chapters = volume_info["chapters"]
-                if "cover" in volume_info:
-                    cover_path = str(
-                        utils.save_response(
-                            path / f"cover_{volume}",
-                            self.session.get(volume_info["cover"]),
-                        )
+    def download_volumes(
+        self,
+        path: Union[str, pathlib.Path],
+        volumes: Optional[List[str]] = None,
+        **kwargs,
+    ) -> None:
+        """Download volumes, by downloading the chapters first and adding their pages to a PDF.
+
+        Args:
+            path: Where to download the volumes (as {volume_number}.pdf).
+            volumes: The volumes to download.
+                If None, all volumes are downloaded.
+            **kwargs: Passed to download_chapters.
+        """
+        path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
+        chapters_to_download = []
+
+        if volumes is None:
+            volumes = self.database["volumes"].keys()
+
+        # download required chapters first
+        for volume in volumes:
+            chapters_to_download.extend(self.database["volumes"][volume]["chapters"])
+        self.download_chapters(path, ids=chapters_to_download, **kwargs)
+
+        for volume in volumes:
+            pdf = fpdf.FPDF()
+            volume_info = self.database["volumes"][volume]
+            cover_url = volume_info.get("cover")
+            if cover_url is not None:
+                cover_path = str(
+                    utils.save_response(
+                        path / f"cover_{volume}",
+                        self.session.get(cover_url),
                     )
+                )
+                pdf.add_page()
+                pdf.image(cover_path)
+
+            for chapter in volume_info["chapters"]:
+                for page in self._image_paths[chapter]:
                     pdf.add_page()
-                    pdf.image(cover_path)
+                    pdf.image(page)
 
-                for chapter in chapters:
-                    for page in pdf_volumes[chapter]:
-                        pdf.add_page()
-                        pdf.image(page)
-
-                pdf.output(str(path / f"{volume}.pdf"), "F")
+            pdf.output(str(path / f"{volume}.pdf"), "F")

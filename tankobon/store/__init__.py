@@ -46,6 +46,15 @@ STORES = {
 STORE_PATH.mkdir(exist_ok=True)
 
 
+# for json
+# right now, we need to handle sets
+def _serialize(obj):
+    if isinstance(obj, set):
+        return list(obj)
+
+    return obj
+
+
 class Store(object):
     """Helper to load Manga classes from Stores.
 
@@ -61,7 +70,9 @@ class Store(object):
     Args:
         store: The store name.
         name: The manga name to get from the store. This should be the manga url.
+        *args: Passed to manga constructor (only when using 'with')
         index_path: The path to the index file. Defaults to INDEX.
+        **kwargs: ditto
 
     Attributes:
         store (str): store name.
@@ -89,7 +100,9 @@ class Store(object):
         self,
         store: str,
         name: str = "",
+        *args,
         index_path: Optional[Union[str, pathlib.Path]] = None,
+        **kwargs,
     ) -> None:
         if store not in self.available:
             raise ValueError(f"store '{store}' does not exist")
@@ -99,6 +112,8 @@ class Store(object):
         except ModuleNotFoundError as err:
             raise ValueError(f"failed loading store '{store}': {err}")
 
+        self._args = args
+        self._kwargs = kwargs
         self.store = store
         self.name = name
         self.pyfile = STORE_PATH / f"{store}.py"
@@ -131,10 +146,10 @@ class Store(object):
 
     def close(self):
         with self._index_path.open(mode="w") as f:
-            json.dump(self._index, f, indent=2)
+            json.dump(self._index, f, indent=2, default=_serialize)
 
     def __enter__(self):
-        return self.manga(database=self.database)
+        return self.manga(*self._args, database=self.database, **self._kwargs)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()

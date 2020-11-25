@@ -13,11 +13,6 @@ from tankobon.__version__ import __version__
 from tankobon.store import STORES, Store
 from tankobon.utils import THREADS, get_soup
 
-coloredlogs.install(
-    fmt=" %(levelname)-8s :: %(message)s",
-    logger=logging.getLogger("tankobon"),
-)
-
 # monkey-patch options
 click.option = partial(click.option, show_default=True)  # type: ignore
 VERBOSITY = (
@@ -27,6 +22,7 @@ VERBOSITY = (
     logging.INFO,
     logging.DEBUG,
 )
+
 _log = logging.getLogger("tankobon")
 
 CACHEPATH = pathlib.Path.home() / "Documents" / "tankobon"
@@ -40,7 +36,11 @@ CACHEPATH = pathlib.Path.home() / "Documents" / "tankobon"
 def cli(verbosity):
     """Manga browser/downloader."""
     # set up logger
-    _log.setLevel(VERBOSITY[verbosity - 1])
+    coloredlogs.install(
+        level=VERBOSITY[verbosity - 1],
+        fmt=" %(levelname)-8s :: %(message)s",
+        logger=_log,
+    )
 
 
 @cli.group()
@@ -125,14 +125,14 @@ def update(store_name):
     "-r", "--refresh", help="whether or not to parse any new chapters", is_flag=True
 )
 @click.option(
-    "-c",
-    "--chapters",
-    help="which chapters to download, seperated by slashes",
+    "-v",
+    "--volumes",
+    help="which volumes to create a pdf for, seperated by slashes",
     default="all",
 )
 @click.option(
-    "-p",
-    "--parse",
+    "-n",
+    "--no-download",
     help="only parse all pages without downloading them",
     is_flag=True,
     default=False,
@@ -144,19 +144,13 @@ def update(store_name):
     is_flag=True,
     default=False,
 )
-@click.option(
-    "-d",
-    "--document",
-    help="create a PDF document for each volume of the manga",
-    is_flag=True,
-    default=False,
-)
-def download(url, path, threads, refresh, chapters, parse, force, document):
+def download(url, path, threads, refresh, volumes, no_download, force, document):
     """Download a manga from url to path."""
     # the url acts as the id here
     path = pathlib.Path(path)
+    path.mkdir(exist_ok=True)
 
-    store = Store(STORES[urlparse(url).netloc], url)
+    store = Store(STORES[urlparse(url).netloc], url, force=force)
     with store as manga:
 
         if chapters != "all":
@@ -167,7 +161,7 @@ def download(url, path, threads, refresh, chapters, parse, force, document):
             chapters = None
             manga.parse_all()
 
-        if not parse:
+        if not no_download:
             manga.download_chapters(path, chapters, as_pdf=document)
 
         _ = manga.database.pop("url")  # we use the url as the manga id anyway..
