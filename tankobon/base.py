@@ -6,6 +6,7 @@ import functools
 import io
 import logging
 import pathlib
+import shutil
 import tempfile
 import time
 from multiprocessing.pool import ThreadPool as Pool
@@ -19,8 +20,6 @@ import requests_random_user_agent  # noqa: F401
 
 from tankobon import utils
 from tankobon.exceptions import TankobonError
-
-Chapters = Generator[Tuple[str, str, str], None, None]
 
 _log = logging.getLogger("tankobon")
 
@@ -49,12 +48,9 @@ class GenericManga(abc.ABC):
     # you should overrride this
     DEFAULTS: Dict[str, Any] = {}
 
-    def __init__(
-        self, database: dict = {}, update: bool = True, force: bool = False
-    ) -> None:
+    def __init__(self, database: dict = {}, update: bool = False) -> None:
         self.database = self.DEFAULTS
         self.database.update(database)  # type: ignore
-        self._force = force
 
         self.database.setdefault("chapters", {})
 
@@ -65,7 +61,7 @@ class GenericManga(abc.ABC):
         self.soup = utils.get_soup(self.database["url"], session=self.session)
         if update:
             self.refresh()
-            self.database["volumes"] = self.parse_volumes()
+            self.database["covers"] = self.get_covers()
 
     def __getattr__(self, key):
         value = self.database.get(key)
@@ -73,143 +69,117 @@ class GenericManga(abc.ABC):
             raise AttributeError
         return value
 
-    def is_parsed(self, id: str) -> bool:
-        """Check whether a chapter has already been parsed to get its page URLs.
-
-        Args:
-            id: The chapter id.
-
-        Returns:
-            True if so, otherwise False.
-        """
-
-        try:
-            return bool(self.database["chapters"][id]["pages"])
-        except KeyError:
-            return False
-
     def sorted(self) -> List[str]:
         return natsort.natsorted(self.database["chapters"])
 
-    @abc.abstractmethod
-    def parse_chapters(self) -> Chapters:
-        """Parse all chapters from the soup.
-
-        Yields:
-            A three-tuple of (chapter_id, chapter_title, chapter_url).
-        """
-
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def parse_pages(self, soup: bs4.BeautifulSoup) -> List[str]:
-        """Parse all pages from a chapter.
-        The chapter's info must have already been cached into the database.
-
-        Args:
-            soup: The soup of the chapter's url.
-
-        Returns:
-            A list of the chapter's pages.
-        """
-        raise NotImplementedError
-
-    def parse_volumes(self) -> Dict[str, List[str]]:
-        """Parse chapter ids into a volume representation like so:
-        {
-            "0": {
-                "chapters": [...],  # list of chapter ids
-                "cover": ...  # the volume cover
-            },
-            ...  # and so on.
-        }
-        By default this returns the chapters split into chunks of 20.
-        The "cover" key is optional. If not provided, the cover is set as
-        the first page of the first chapter of the volume.
-
-        Returns:
-            A map of volume ids to a list of chapter ids.
-        """
-        chapters = self.sorted()
-        return {
-            str(v): c
-            for v, c in enumerate(
-                [chapters[x : x + 20] for x in range(0, len(chapters), 20)]
-            )
-        }
-
     def refresh(self) -> None:
-        """Refresh the database, adding any new chapter info.
-        Does not download the chapter webpages (under the 'pages' key).
+        """Add all (new) chapters to the database."""
+        for chapter, chapter_info in self.get_chapters():
+            if chapter in self.database["chapters"]:
+                continue
+            self.database["chapters"][chapter] = chapter_info
+
+    def get_soup(self, url: str) -> bs4.BeautifulSoup:
+        """Get a soup from a url.
 
         Args:
-            force: Whether or not to overwrite any existing chapters with newer data.
+            url: The url.
+
+        Returns:
+            The soup object.
         """
+        return utils.get_soup(url, session=self.session)
 
-        for id, title, url in self.parse_chapters():
-            if self.is_parsed(id) and not self._force:
-                continue
-            self.database["chapters"][id] = {"url": url, "title": title, "pages": []}
-
-    @property
-    def existing_chapters(self) -> Chapters:
-        """Generate existing chapters cached into the database.
+    @abc.abstractmethod
+    def get_chapters(self) -> Generator[Tuple[str, Dict[str, str]], None, None]:
+        """Get all chapters in the manga.
+        You must override this.
 
         Yields:
-            A three-tuple of (id, title, url).
+            A two-tuple of (chapter, chapter_info)
+            where chapter is the chapter number and chapter_info is a dict:
+            {
+                "title": "chapter title",
+                "url": "chapter url",
+                "volume": "volume, i.e '0'",
+            }
         """
-        for id, chapter in self.database["chapters"].items():
-            yield id, chapter["title"], chapter["url"]
 
-    def _parse_all(self, args):
-        id, title, url = args
-        if self.is_parsed(id) and not self._force:
-            _log.info(f"skipping {id}")
-            return
-        pages = self.parse_pages(
-            utils.get_soup(url, encoding="utf-8", session=self.session)
-        )
-        _log.info(f"parsed {id}")
-        return id, {"title": title, "url": url, "pages": pages}
-
-    def parse_all(self, threads: int = utils.THREADS) -> dict:
-        """Parse all chapters, adding their page URLs to their info.
+    @abc.abstractmethod
+    def get_pages(self, chapter_url: str) -> List[str]:
+        """Get all pages for a chapter, given its url.
+        You must override this.
 
         Args:
+            chapter_url: The url of the chapter.
+        Returns:
+            A list of urls of the pages.
+        """
+
+    @abc.abstractmethod
+    def get_covers(self) -> Dict[str, str]:
+        """Get all covers for the manga volumes.
+        Overriding this is optional, the cover won't be downloaded if it does not exist.
+
+        Returns:
+            A dictionary where volume numbers are mapped to the url of the cover:
+            {
+                "0": "...",
+                ...
+            }
+        """
+        return {}
+
+    def _parse(self, args):
+        chapter, chapter_info = args
+        if chapter_info.get("pages"):
+            _log.info(f"[parse] skipping {chapter}")
+            return None, None
+        _log.info(f"[parse] parsing {chapter}")
+        return chapter, self.get_pages(chapter_info["url"])
+
+    def parse(
+        self, chapters: Optional[List[str]] = None, threads: int = utils.THREADS
+    ) -> List[str]:
+        """Parse chapters, adding their pages to the database.
+
+        Args:
+            chapters: The chapters to parse. If None, all chapters are parsed.
+                Defaults to None.
             threads: How many threads to use to speed up parsing.
                 Defaults to THREADS (8).
 
         Returns:
-            The info of all chapters mapped to their ids.
+            The chapters that were parsed.
         """
+        if chapters is None:
+            chapters = self.database["chapters"].keys()
 
         with Pool(threads) as pool:
             results = pool.imap_unordered(
-                self._parse_all, self.existing_chapters  # type: ignore
+                self._parse, [(c, self.database["chapters"][c]) for c in chapters]
             )
 
-            for result in results:
-                if result is None:
+            for chapter, pages in results:
+                if not chapter or not pages:
                     continue
-                id, chapter = result
-                self.database["chapters"][id] = chapter
+                self.database["chapters"][chapter]["pages"] = pages
 
-        return self.database
+        return chapters
 
     def download_chapters(
         self,
         path: Union[str, pathlib.Path],
-        ids: Optional[List[str]] = None,
+        chapters: Optional[List[str]] = None,
         force: bool = False,
         threads: int = utils.THREADS,
         cooldown: int = 2,
     ) -> None:
         """Download chapters, caching its pages on disk.
-        Ignores any existing chapter data on disk (downloads anyway).
 
         Args:
             path: Where to download the chapters to.
-            ids: The page ids. Defaults to all chapters.
+            chapters: The chapters to download. Defaults to all chapters.
             force: Whether or not to re-download chapters, regardless if they are
                 already downloaded. Defaults to False.
             threads: The number of threads to use to download the pages.
@@ -219,10 +189,8 @@ class GenericManga(abc.ABC):
         """
 
         path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
-        self._image_paths: Dict[str, List[str]] = {}
 
-        if ids is None:
-            ids = self.database["chapters"].keys()
+        chapters = self.parse(chapters=chapters)
 
         def session_get(*args, **kwargs):
             nonlocal self
@@ -231,34 +199,45 @@ class GenericManga(abc.ABC):
             try:
                 return self.session.get(*args, **kwargs)
             except requests.exceptions.ConnectionError as e:
-                raise requests.exceptions.ConnectionError(e, args, kwargs)
+                _log.error("%s: @s", e, str(args))
 
-        for id in ids:
+        for chapter in chapters:
 
-            self._image_paths[id] = []
-
-            chapter_path = path / id
+            chapter_path = path / chapter
             if chapter_path.exists() and not force:
-                _log.info(f"skipping chapter {id}")
+                _log.info(f"[download] skipping chapter {chapter}")
                 continue
-            _log.info(f"downloading chapter {id}")
+            _log.info(f"[download] downloading chapter {chapter}")
 
-            chapter_path.mkdir(exist_ok=True)
-            urls = self.database["chapters"][id]["pages"]
+            try:
+                chapter_path.mkdir(exist_ok=True)
+                urls = self.database["chapters"][chapter]["pages"]
 
-            with Pool(threads) as pool:
-                responses = pool.imap(session_get, urls)
+                with Pool(threads) as pool:
+                    responses = pool.imap(session_get, urls)
 
-                for page_number, response in enumerate(responses):
-                    _log.debug("downloaded page %s from %s", page_number, response.url)
+                    for page_number, response in enumerate(responses):
+                        _log.debug(
+                            "[download] downloaded page %s from %s",
+                            page_number,
+                            response.url,
+                        )
 
-                    page_path = chapter_path / f"{page_number}"
-                    try:
-                        utils.save_response(page_path, response)
-                    except KeyError:
-                        # there is no content type (text/html, problably)
-                        raise TankobonError(f"page '{response.url}' is not an image")
-                    self._image_paths[id] += str(page_path)
+                        page_path = chapter_path / f"{page_number}"
+                        try:
+                            utils.save_response(page_path, response)
+                        except KeyError:
+                            # there is no content type (text/html, problably)
+                            raise TankobonError(
+                                f"page '{response.url}' is not an image"
+                            )
+            except:
+                _log.critical(
+                    "[download] could not download all pages for chapter %s, removing chapter dir",
+                    chapter,
+                )
+                shutil.rmtree(str(chapter_path))
+                raise
 
     def download_volumes(
         self,
@@ -275,21 +254,28 @@ class GenericManga(abc.ABC):
             **kwargs: Passed to download_chapters.
         """
         path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
-        chapters_to_download = []
+        chapters_to_download: List[str] = []
 
+        # we use sets for faster lookup
         if volumes is None:
-            volumes = self.database["volumes"].keys()
+            _volumes = {c["volume"] for c in self.database["chapters"].values()}
+        else:
+            _volumes = set(volumes)  # type: ignore
+        volume_map: Dict[str, List[str]] = {v: [] for v in _volumes}
 
-        # download required chapters first
-        for volume in volumes:
-            chapters_to_download.extend(self.database["volumes"][volume]["chapters"])
-        self.download_chapters(path, ids=chapters_to_download, **kwargs)
+        for chapter, chapter_info in self.database["chapters"].items():
+            volume = chapter_info["volume"]
+            if volume in volume_map:
+                volume_map[volume].append(chapter)
 
-        for volume in volumes:
+        for volume, chapters in volume_map.items():
+            # download required chapters first
+            self.download_chapters(path, chapters=chapters, **kwargs)
+            _log.info("[pdf] creating pdf for volume %s", volume)
             pdf = fpdf.FPDF()
-            volume_info = self.database["volumes"][volume]
-            cover_url = volume_info.get("cover")
+            cover_url = self.database["covers"].get(volume)
             if cover_url is not None:
+                _log.debug("[pdf] adding cover from %s", cover_url)
                 cover_path = str(
                     utils.save_response(
                         path / f"cover_{volume}",
@@ -299,9 +285,18 @@ class GenericManga(abc.ABC):
                 pdf.add_page()
                 pdf.image(cover_path)
 
-            for chapter in volume_info["chapters"]:
-                for page in self._image_paths[chapter]:
+            for chapter in natsort.natsorted(chapters):
+                _log.info("[pdf] adding chapter %s", chapter)
+                chapter_path = path / chapter
+                for page in natsort.natsorted(
+                    (str(p) for p in chapter_path.glob("*.*"))
+                ):
+                    _log.debug("[pdf] adding page %s", page)
                     pdf.add_page()
-                    pdf.image(page)
+                    try:
+                        pdf.image(page, 0, 0, 210, 297)
+                    except RuntimeError as e:
+                        raise RuntimeError(page, e)
 
+            _log.info("[pdf] saving %s.pdf", volume)
             pdf.output(str(path / f"{volume}.pdf"), "F")

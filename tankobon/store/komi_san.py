@@ -19,7 +19,8 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
-    def parse_pages(self, soup):
+    def get_pages(self, url):
+        soup = self.get_soup(url)
         pages = []
         # pages_div = soup.find("div", class_="post-body entry-content")
         # if not pages_div:
@@ -31,7 +32,7 @@ class Manga(GenericManga):
             if "blogspot.com" in link["src"]
         ]
 
-    def parse_chapters(self):
+    def get_chapters(self):
         # get rid of section
         section = self.soup.find("section", class_="widget ceo_latest_comics_widget")
         if section is not None:
@@ -46,4 +47,4 @@ class Manga(GenericManga):
 
             if match:
                 id, title = match[0]
-                yield id, title, href
+                yield id, {"title": title, "url": href}

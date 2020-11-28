@@ -7,17 +7,12 @@ The module's name should be a normalised version of the website, i.e komi-san.co
 Example:
 
 class Manga(GenericManga):
-    # must yield a three-tuple of (chapter_id, chapter_title, chapter_url).
-    def parse_chapters(self):
+    # yields a two-tuple of (chapter, chapter_info)
+    def get_chapters(self):
         ...
     # must return a list of page urls where soup is the BeautifulSoup of the chapter
     # url.
-    def parse_pages(self, soup):
-        ...
-    # get the cover of the manga, must be a property
-    # optional
-    @property
-    def cover(self):
+    def get_pages(self, chapter_url):
         ...
 
 See the existing stores in this folder for more details.
@@ -26,6 +21,7 @@ See the existing stores in this folder for more details.
 import importlib
 import logging
 import pathlib
+from urllib.parse import urlparse
 from typing import Optional, Union
 
 import json
@@ -60,17 +56,17 @@ class Store(object):
 
     Usage:
 
-    manga_store = Store('store_name', 'manga_name')
+    manga_store = Store('manga_url')
     Manga = manga_store.manga  # the raw Manga object
     manga = Manga(manga_store.database)  # load database
 
-    with Store('store_name', 'manga_name') as manga:
+    with Store('manga_url') as manga:
         manga.parse_all()  # use the manga object directly
 
     Args:
-        store: The store name.
         name: The manga name to get from the store. This should be the manga url.
         *args: Passed to manga constructor (only when using 'with')
+        store: The store name.
         index_path: The path to the index file. Defaults to INDEX.
         **kwargs: ditto
 
@@ -98,12 +94,13 @@ class Store(object):
 
     def __init__(
         self,
-        store: str,
-        name: str = "",
+        url: str,
         *args,
+        store: str = "",
         index_path: Optional[Union[str, pathlib.Path]] = None,
         **kwargs,
     ) -> None:
+        store = STORES.get(urlparse(url).netloc) or store
         if store not in self.available:
             raise ValueError(f"store '{store}' does not exist")
 
@@ -115,7 +112,7 @@ class Store(object):
         self._args = args
         self._kwargs = kwargs
         self.store = store
-        self.name = name
+        self.name = url
         self.pyfile = STORE_PATH / f"{store}.py"
 
         if index_path is not None:

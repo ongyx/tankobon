@@ -81,37 +81,6 @@ def info(name, chapter):
             click.echo("")
 
 
-@store.command()
-@click.option(
-    "-s", "--store_name", help="update only for a specific store/manga", default="all"
-)
-def update(store_name):
-    """Update all previously downloaded mangas."""
-    if "/" in store_name:
-        store_name, _, manga_name = store_name.partition("/")
-    else:
-        manga_name = None
-
-    if store_name == "all":
-        _log.info("updating all mangas")
-        for store, mangas in Store._index.items():
-            for manga in mangas:
-                with Store(store, manga) as m:
-                    _log.info(f"updating {store}:{manga}")
-                    m.parse_all()
-    else:
-        _log.info(f"updating mangas for store {store_name}")
-        if manga_name:
-            mangas = [manga_name]
-        else:
-            mangas = Store._index[store_name]
-
-        for manga in mangas:
-            with Store(store_name, manga) as m:
-                _log.info(f"updating {store}:{manga}")
-                m.parse_all()
-
-
 @cli.command()
 @click.argument("url")
 @click.option("-p", "--path", help="where to download to", default=".")
@@ -137,32 +106,28 @@ def update(store_name):
     is_flag=True,
     default=False,
 )
-@click.option(
-    "-f",
-    "--force",
-    help="reparse all chapters and pages, regardless whether or not they have already been parsed",
-    is_flag=True,
-    default=False,
-)
-def download(url, path, threads, refresh, volumes, no_download, force, document):
+# @click.option(
+#    "-f",
+#    "--force",
+#    help="reparse all chapters and pages, regardless whether or not they have already been parsed",
+#    is_flag=True,
+#    default=False,
+# )
+def download(url, path, threads, refresh, volumes, no_download):
     """Download a manga from url to path."""
     # the url acts as the id here
     path = pathlib.Path(path)
     path.mkdir(exist_ok=True)
 
-    store = Store(STORES[urlparse(url).netloc], url, force=force)
+    volumes = None if volumes == "all" else volumes.split("/")
+
+    store = Store(url, update=True)
     with store as manga:
 
-        if chapters != "all":
-            chapters = chapters.split("/")
-            for chapter in chapters:
-                manga.parse_pages(get_soup(manga.database["chapters"][chapter]["url"]))
+        if no_download:
+            manga.parse()
         else:
-            chapters = None
-            manga.parse_all()
-
-        if not no_download:
-            manga.download_chapters(path, chapters, as_pdf=document)
+            manga.download_volumes(path, volumes)
 
         _ = manga.database.pop("url")  # we use the url as the manga id anyway..
         store.database = manga.database
