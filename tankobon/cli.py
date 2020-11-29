@@ -124,13 +124,15 @@ def download(url, path, threads, refresh, volumes, no_download):
     store = Store(url, update=True)
     with store as manga:
 
-        if no_download:
-            manga.parse()
-        else:
-            manga.download_volumes(path, volumes)
+        try:
+            if no_download:
+                manga.parse()
+            else:
+                manga.download_volumes(path, volumes)
 
-        _ = manga.database.pop("url")  # we use the url as the manga id anyway..
-        store.database = manga.database
+            _ = manga.database.pop("url")  # we use the url as the manga id anyway..
+        finally:
+            store.database = manga.database
 
 
 if __name__ == "__main__":

@@ -243,6 +243,7 @@ class GenericManga(abc.ABC):
         self,
         path: Union[str, pathlib.Path],
         volumes: Optional[List[str]] = None,
+        add_cover: bool = False,
         **kwargs,
     ) -> None:
         """Download volumes, by downloading the chapters first and adding their pages to a PDF.
@@ -251,6 +252,8 @@ class GenericManga(abc.ABC):
             path: Where to download the volumes (as {volume_number}.pdf).
             volumes: The volumes to download.
                 If None, all volumes are downloaded.
+            add_cover: Whether or not to add a cover to each volume (if it exists).
+                Defaults to False.
             **kwargs: Passed to download_chapters.
         """
         path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
@@ -274,7 +277,7 @@ class GenericManga(abc.ABC):
             _log.info("[pdf] creating pdf for volume %s", volume)
             pdf = fpdf.FPDF()
             cover_url = self.database["covers"].get(volume)
-            if cover_url is not None:
+            if cover_url is not None and add_cover:
                 _log.debug("[pdf] adding cover from %s", cover_url)
                 cover_path = str(
                     utils.save_response(
@@ -294,7 +297,7 @@ class GenericManga(abc.ABC):
                     _log.debug("[pdf] adding page %s", page)
                     pdf.add_page()
                     try:
-                        pdf.image(page, 0, 0, 210, 297)
+                        pdf.image(page, 0, 0, 210)
                     except RuntimeError as e:
                         raise RuntimeError(page, e)
 
