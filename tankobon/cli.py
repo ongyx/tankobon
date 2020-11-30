@@ -1,6 +1,7 @@
 # coding: utf8
 
 import logging
+import os
 import pathlib
 from functools import partial
 from urllib.parse import urlparse
@@ -24,8 +25,6 @@ VERBOSITY = (
 )
 
 _log = logging.getLogger("tankobon")
-
-CACHEPATH = pathlib.Path.home() / "Documents" / "tankobon"
 
 
 @click.group()
@@ -106,6 +105,12 @@ def info(name, chapter):
     is_flag=True,
     default=False,
 )
+@click.option(
+    "-i",
+    "--index",
+    help="path to the index.json file (can also be set using 'TANKOBON_INDEX' env variable",
+    default="",
+)
 # @click.option(
 #    "-f",
 #    "--force",
@@ -113,15 +118,18 @@ def info(name, chapter):
 #    is_flag=True,
 #    default=False,
 # )
-def download(url, path, threads, refresh, volumes, no_download):
+def download(url, path, threads, refresh, volumes, no_download, index):
     """Download a manga from url to path."""
     # the url acts as the id here
     path = pathlib.Path(path)
     path.mkdir(exist_ok=True)
 
+    if not index:
+        index = os.environ.get("TANKOBON_INDEX")
+
     volumes = None if volumes == "all" else volumes.split("/")
 
-    store = Store(url, update=True)
+    store = Store(url, index_path=index, update=True)
     with store as manga:
 
         try:

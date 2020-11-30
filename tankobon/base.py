@@ -58,6 +58,9 @@ class GenericManga(abc.ABC):
         # hehe boi
         self.session.headers.update({"referer": self.database["url"]})
 
+        # monkeypatch for convinence in client code
+        self.session.get = functools.partial(self.session.get, timeout=5)  # type: ignore[assignment]
+
         self.soup = utils.get_soup(self.database["url"], session=self.session)
         if update:
             self.refresh()
