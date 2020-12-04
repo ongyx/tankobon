@@ -10,13 +10,11 @@ class Manga(GenericManga):
     RE_TITLE = re.compile(r"(.*) Manga *\|")
     RE_CHAPTER = re.compile(r"Chapter (\d+)\:? ?([\w \(\)]*)")
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.database["title"] = self.RE_TITLE.findall(
-            self.soup.find("meta", property="og:title")["content"]
-        )[0]
+    def get_title(self):
+        return self.RE_TITLE.findall(super().get_title())[0]
 
-    def parse_pages(self, soup):
+    def get_pages(self, url):
+        soup = self.get_soup(url)
 
         pages = []
         pages_div = soup.find("div", class_="container-chapter-reader")
@@ -28,7 +26,7 @@ class Manga(GenericManga):
 
         return pages
 
-    def parse_chapters(self):
+    def get_chapters(self):
         for tag in self.soup.find_all("a", class_="chapter-name"):
             href = str(tag.get("href"))
             title = str(tag.text)
@@ -37,4 +35,4 @@ class Manga(GenericManga):
 
             if match:
                 id, title = match[0]
-                yield id, title, href
+                yield id, {"title": title, "url": href}

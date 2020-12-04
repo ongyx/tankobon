@@ -14,6 +14,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import bs4
 import fpdf
+import imagesize
 import natsort
 import requests
 import requests_random_user_agent  # noqa: F401
@@ -64,6 +65,7 @@ class GenericManga(abc.ABC):
         self.soup = utils.get_soup(self.database["url"], session=self.session)
         if update:
             self.refresh()
+            self.database["title"] = self.get_title()
             self.database["covers"] = self.get_covers()
 
     def __getattr__(self, key):
@@ -119,7 +121,15 @@ class GenericManga(abc.ABC):
             A list of urls of the pages.
         """
 
-    @abc.abstractmethod
+    def get_title(self) -> str:
+        """Get the title of the manga.
+        Overriding this is optional.
+
+        Returns:
+            The manga title.
+        """
+        return self.soup.find("meta", property="og:title")["content"]
+
     def get_covers(self) -> Dict[str, str]:
         """Get all covers for the manga volumes.
         Overriding this is optional, the cover won't be downloaded if it does not exist.
@@ -245,7 +255,7 @@ class GenericManga(abc.ABC):
     def download_volumes(
         self,
         path: Union[str, pathlib.Path],
-        volumes: Optional[List[str]] = None,
+        volumes: List[str] = [],
         add_cover: bool = False,
         **kwargs,
     ) -> None:
@@ -254,23 +264,22 @@ class GenericManga(abc.ABC):
         Args:
             path: Where to download the volumes (as {volume_number}.pdf).
             volumes: The volumes to download.
-                If None, all volumes are downloaded.
+                If not specified, all volumes are downloaded.
             add_cover: Whether or not to add a cover to each volume (if it exists).
                 Defaults to False.
             **kwargs: Passed to download_chapters.
         """
         path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
-        chapters_to_download: List[str] = []
 
         # we use sets for faster lookup
-        if volumes is None:
-            _volumes = {c["volume"] for c in self.database["chapters"].values()}
-        else:
-            _volumes = set(volumes)  # type: ignore
+        _volumes = set(volumes) or {
+            c.get("volume") or "0" for c in self.database["chapters"].values()
+        }
         volume_map: Dict[str, List[str]] = {v: [] for v in _volumes}
 
         for chapter, chapter_info in self.database["chapters"].items():
-            volume = chapter_info["volume"]
+            volume = chapter_info.get("volume") or "0"
+            # volume may not be specified, so add to volume 0
             if volume in volume_map:
                 volume_map[volume].append(chapter)
 
@@ -299,8 +308,16 @@ class GenericManga(abc.ABC):
                 ):
                     _log.debug("[pdf] adding page %s", page)
                     pdf.add_page()
+                    # FIXME: pages are not resized correctly
+                    width, height = imagesize.get(page)
+                    if width > 210:
+                        width = 0
+                        height = 270
+                    elif height > 270:
+                        width = 210
+                        height = 0
                     try:
-                        pdf.image(page, 0, 0, 210)
+                        pdf.image(page, 0, 0, w=width, h=height)
                     except RuntimeError as e:
                         raise RuntimeError(page, e)
 

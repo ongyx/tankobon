@@ -7,6 +7,7 @@ import re
 from typing import Union, Optional
 
 import bs4
+import filetype
 import requests
 import requests_random_user_agent  # noqa: F401
 
@@ -33,13 +34,14 @@ def get_file_extension(response: requests.models.Response) -> str:
         response: The response object (from requests.get, et al.)
     """
 
-    content_type = response.headers.get("Content-Type")
-    if content_type is not None:
-        ext = FILE_EXTENSIONS[content_type.partition(";")[0]]
-    else:
-        ext = response.url.rpartition(".")[-1]
+    # FIXME: this code breaks if header is incorrect
+    # content_type = response.headers.get("Content-Type")
+    # if content_type is not None:
+    #    ext = FILE_EXTENSIONS[content_type.partition(";")[0]]
+    # else:
+    #    ext = response.url.rpartition(".")[-1]
 
-    return f".{ext}"
+    return f".{FILE_EXTENSIONS[filetype.guess_mime(response.content)]}"
 
 
 def _is_valid_char(char):

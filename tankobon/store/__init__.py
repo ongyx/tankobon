@@ -37,6 +37,7 @@ STORES = {
     "komi-san.com": "komi_san",
     "m.mangabat.com": "mangabat",
     "mangadex.org": "mangadex",
+    "mangakakalot.com": "mangakakalot",
 }
 
 STORE_PATH.mkdir(exist_ok=True)

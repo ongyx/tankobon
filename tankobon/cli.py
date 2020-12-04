@@ -127,7 +127,7 @@ def download(url, path, threads, refresh, volumes, no_download, index):
     if not index:
         index = os.environ.get("TANKOBON_INDEX")
 
-    volumes = None if volumes == "all" else volumes.split("/")
+    volumes = [] if volumes == "all" else volumes.split("/")
 
     store = Store(url, index_path=index, update=True)
     with store as manga:
@@ -140,6 +140,7 @@ def download(url, path, threads, refresh, volumes, no_download, index):
 
             _ = manga.database.pop("url")  # we use the url as the manga id anyway..
         finally:
+            _log.info("[database] syncing to disk")
             store.database = manga.database
 
 

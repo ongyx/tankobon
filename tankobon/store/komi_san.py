@@ -19,6 +19,9 @@ class Manga(GenericManga):
         "chapters": {},
     }
 
+    def get_title(self):
+        return self.DEFAULTS["title"]
+
     def get_pages(self, url):
         soup = self.get_soup(url)
         pages = []

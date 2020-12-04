@@ -41,11 +41,15 @@ class Manga(GenericManga):
                 if c["language"] == "gb"  # multi-language support?
             ]
 
+        previous_volume = "0"
         for chapter in self._manga_data:
-            if not chapter.get("volume"):
-                chapter["volume"] = "0"
+            volume = chapter.get("volume")
+            if not volume:
+                volume = previous_volume
+            else:
+                previous_volume = volume
 
-            if chapter["volume"] == "0":
+            if volume == "0":
                 # oneshot??
                 chapter["chapter"] = "0"
 
@@ -53,7 +57,7 @@ class Manga(GenericManga):
                 "title": chapter["title"],
                 # NOTE: data_saver is set to true for now (higher-quality image download keeps getting dropped)
                 "url": f"{self.API_URL}/chapter/{chapter['id']}?saver=true",
-                "volume": chapter["volume"],
+                "volume": volume,
             }
 
     def get_covers(self):
