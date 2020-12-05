@@ -43,6 +43,7 @@ class Manga(GenericManga):
                 for c in json.loads(_as_raw(self.soup))["data"]["chapters"]
                 if c["language"] == "gb"  # multi-language support?
             ]
+            self._manga_data.reverse()
 
         previous_volume = "0"
         for chapter in self._manga_data:
@@ -52,7 +53,7 @@ class Manga(GenericManga):
             else:
                 previous_volume = volume
 
-            if volume == "0" and not chapter["chapter"]:
+            if not chapter["chapter"]:
                 # oneshot??
                 chapter["chapter"] = "0"
 
@@ -60,7 +61,7 @@ class Manga(GenericManga):
                 "title": chapter["title"],
                 # NOTE: data_saver is set to true for now (higher-quality image download keeps getting dropped)
                 "url": f"{self.API_URL}/chapter/{chapter['id']}?saver=true",
-                "volume": chapter["volume"],
+                "volume": volume,
             }
 
     def get_covers(self):

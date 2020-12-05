@@ -82,7 +82,7 @@ def info(name, chapter):
 
 @cli.command()
 @click.argument("url")
-@click.option("-p", "--path", help="where to download to", default=".")
+@click.option("-d", "--dir", help="where to download to", default=".")
 @click.option(
     "-t",
     "--threads",
@@ -90,18 +90,18 @@ def info(name, chapter):
     default=THREADS,
 )
 @click.option(
-    "-r", "--refresh", help="whether or not to parse any new chapters", is_flag=True
-)
-@click.option(
-    "-v",
-    "--volumes",
-    help="which volumes to create a pdf for, seperated by slashes",
-    default="all",
+    "-p",
+    "--pdf",
+    help=(
+        "which volumes to create a pdf for, seperated by slashes (1/2/3). "
+        "Note that any chapters in the volume not explicitly specified with --chapters will be downloaded."
+    ),
+    default="none",
 )
 @click.option(
     "-n",
     "--no-download",
-    help="only parse all pages without downloading them",
+    help="only parse all pages without downloading any",
     is_flag=True,
     default=False,
 )
@@ -111,6 +111,12 @@ def info(name, chapter):
     help="path to the index.json file (can also be set using 'TANKOBON_INDEX' env variable",
     default="",
 )
+@click.option(
+    "-c",
+    "--chapters",
+    help="chapters to download, seperated by slashes (1/2/3) or a range (1-3). Both can be mixed: (1/2-5).",
+    default="all",
+)
 # @click.option(
 #    "-f",
 #    "--force",
@@ -118,25 +124,46 @@ def info(name, chapter):
 #    is_flag=True,
 #    default=False,
 # )
-def download(url, path, threads, refresh, volumes, no_download, index):
+def download(url, dir, threads, pdf, no_download, index, chapters):
     """Download a manga from url to path."""
     # the url acts as the id here
-    path = pathlib.Path(path)
-    path.mkdir(exist_ok=True)
+    dir = pathlib.Path(dir)
+    dir.mkdir(exist_ok=True)
 
     if not index:
         index = os.environ.get("TANKOBON_INDEX")
 
-    volumes = [] if volumes == "all" else volumes.split("/")
-
     store = Store(url, index_path=index, update=True)
     with store as manga:
+
+        chapters_to_download = set()
+        all_chapters = manga.sorted()
+        if chapters != "all":
+            for chapter in chapters.split("/"):
+                if "-" in chapter:
+                    start, _, end = chapter.partition("-")
+                    for c in all_chapters[
+                        all_chapters.index(start) : all_chapters.index(end) + 1
+                    ]:
+                        chapters_to_download.add(c)
 
         try:
             if no_download:
                 manga.parse()
             else:
-                manga.download_volumes(path, volumes)
+                if chapters_to_download:
+                    # download user requested chapters
+                    manga.download_chapters(
+                        dir, chapters=list(chapters_to_download), threads=threads
+                    )
+
+                elif pdf != "none":
+                    # download user requested volumes
+                    manga.download_volumes(dir, pdf.split("/"), threads=threads)
+
+                elif chapters == "all":
+                    # download all chapters
+                    manga.download_chapters(dir)
 
             _ = manga.database.pop("url")  # we use the url as the manga id anyway..
         finally:
