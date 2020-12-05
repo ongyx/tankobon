@@ -22,9 +22,12 @@ class Manga(GenericManga):
         database = next(iter(args), None) or kwargs.get("database")
         self._id = self.RE_URL.findall(database["url"])[0][0]
         database["url"] = f"{self.API_URL}/manga/{self._id}/chapters"
-
         self._manga_data = None
+
         super().__init__(*args, **kwargs)
+
+    def get_title(self):
+        return json.loads(_as_raw(self.soup))["data"]["chapters"][0]["mangaTitle"]
 
     def get_pages(self, url):
         chapter_data = self.session.get(url).json()["data"]
@@ -43,13 +46,13 @@ class Manga(GenericManga):
 
         previous_volume = "0"
         for chapter in self._manga_data:
-            volume = chapter.get("volume")
+            volume = chapter["volume"]
             if not volume:
                 volume = previous_volume
             else:
                 previous_volume = volume
 
-            if volume == "0":
+            if volume == "0" and not chapter["chapter"]:
                 # oneshot??
                 chapter["chapter"] = "0"
 
@@ -57,7 +60,7 @@ class Manga(GenericManga):
                 "title": chapter["title"],
                 # NOTE: data_saver is set to true for now (higher-quality image download keeps getting dropped)
                 "url": f"{self.API_URL}/chapter/{chapter['id']}?saver=true",
-                "volume": volume,
+                "volume": chapter["volume"],
             }
 
     def get_covers(self):

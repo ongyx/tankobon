@@ -82,6 +82,9 @@ class GenericManga(abc.ABC):
         for chapter, chapter_info in self.get_chapters():
             if chapter in self.database["chapters"]:
                 continue
+
+            if not chapter_info.get("volume"):
+                chapter_info["volume"] = "0"
             self.database["chapters"][chapter] = chapter_info
 
     def get_soup(self, url: str) -> bs4.BeautifulSoup:
@@ -280,8 +283,11 @@ class GenericManga(abc.ABC):
         for chapter, chapter_info in self.database["chapters"].items():
             volume = chapter_info.get("volume") or "0"
             # volume may not be specified, so add to volume 0
-            if volume in volume_map:
-                volume_map[volume].append(chapter)
+            if volume not in volume_map:
+                _log.debug("[volume] skipping chapter %s", chapter)
+                continue
+
+            volume_map[volume].append(chapter)
 
         for volume, chapters in volume_map.items():
             # download required chapters first
@@ -310,14 +316,16 @@ class GenericManga(abc.ABC):
                     pdf.add_page()
                     # FIXME: pages are not resized correctly
                     width, height = imagesize.get(page)
-                    if width > 210:
-                        width = 0
-                        height = 270
-                    elif height > 270:
-                        width = 210
-                        height = 0
+                    a4width = 210
+                    a4height = 297
+
+                    # figure out which dimention has to be auto-calculated
+                    if (width / a4width) < (height / a4height):
+                        a4height = 0
+                    else:
+                        a4width = 0
                     try:
-                        pdf.image(page, 0, 0, w=width, h=height)
+                        pdf.image(page, 0, 0, w=a4width, h=a4height)
                     except RuntimeError as e:
                         raise RuntimeError(page, e)
 
