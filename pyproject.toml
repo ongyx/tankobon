@@ -33,8 +33,7 @@ jsonschema = [
 ]
 gui = [
     "pyglet>=1.5.8",
-    # dev version
-    "pyglet-gui @ https://api.github.com/repos/jorgecarleitao/pyglet-gui/tarball",
+    "pyglet-gui>=0.1",
 ]
 
 [tool.flit.scripts]
