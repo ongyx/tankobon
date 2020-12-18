@@ -4,15 +4,14 @@ import logging
 import os
 import pathlib
 from functools import partial
-from urllib.parse import urlparse
 
 import click
 import coloredlogs
 import natsort
 
 from tankobon.__version__ import __version__
-from tankobon.store import STORES, Store
-from tankobon.utils import THREADS, get_soup
+from tankobon.store import Store
+from tankobon.utils import THREADS
 
 # monkey-patch options
 click.option = partial(click.option, show_default=True)  # type: ignore
@@ -132,6 +131,9 @@ def download(url, dir, threads, pdf, no_download, index, chapters):
 
     if not index:
         index = os.environ.get("TANKOBON_INDEX")
+
+    if url.endswith("/"):
+        url = url[:-1]
 
     store = Store(url, index_path=index, update=True)
     with store as manga:

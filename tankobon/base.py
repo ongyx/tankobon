@@ -3,11 +3,9 @@
 
 import abc
 import functools
-import io
 import logging
 import pathlib
 import shutil
-import tempfile
 import time
 from multiprocessing.pool import ThreadPool as Pool
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
@@ -62,11 +60,9 @@ class GenericManga(abc.ABC):
         # monkeypatch for convinence in client code
         self.session.get = functools.partial(self.session.get, timeout=5)  # type: ignore[assignment]
 
-        self.soup = utils.get_soup(self.database["url"], session=self.session)
+        self.soup = self.get_soup(self.database["url"])
         if update:
-            self.refresh()
-            self.database["title"] = self.get_title()
-            self.database["covers"] = self.get_covers()
+            self.update()
 
     def __getattr__(self, key):
         value = self.database.get(key)
@@ -77,8 +73,10 @@ class GenericManga(abc.ABC):
     def sorted(self) -> List[str]:
         return natsort.natsorted(self.database["chapters"])
 
-    def refresh(self) -> None:
+    def update(self) -> None:
         """Add all (new) chapters to the database."""
+        self.database["title"] = self.get_title()
+        self.database["covers"] = self.get_covers()
         for chapter, chapter_info in self.get_chapters():
             if chapter in self.database["chapters"]:
                 continue
@@ -131,7 +129,10 @@ class GenericManga(abc.ABC):
         Returns:
             The manga title.
         """
-        return self.soup.find("meta", property="og:title")["content"]
+        return (
+            self.soup.title.text
+            or self.soup.find("meta", property="og:title")["content"]
+        )
 
     def get_covers(self) -> Dict[str, str]:
         """Get all covers for the manga volumes.
@@ -217,6 +218,8 @@ class GenericManga(abc.ABC):
             except requests.exceptions.ConnectionError as e:
                 _log.error("%s: @s", e, str(args))
 
+        _log.info(f"[download] {len(chapters)} chapters to download, starting")
+
         for chapter in chapters:
 
             chapter_path = path / chapter
@@ -247,7 +250,7 @@ class GenericManga(abc.ABC):
                             raise TankobonError(
                                 f"page '{response.url}' is not an image"
                             )
-            except:
+            except:  # noqa: E722
                 _log.critical(
                     "[download] could not download all pages for chapter %s, removing chapter dir",
                     chapter,

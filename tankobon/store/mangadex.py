@@ -1,7 +1,5 @@
 # coding: utf8
 
-import collections
-import json
 import re
 
 from tankobon.base import GenericManga
@@ -19,15 +17,30 @@ class Manga(GenericManga):
     RE_URL = re.compile(r".*/(\d+)/(\w+)/?.*")
 
     def __init__(self, *args, **kwargs):
-        database = next(iter(args), None) or kwargs.get("database")
-        self._id = self.RE_URL.findall(database["url"])[0][0]
-        database["url"] = f"{self.API_URL}/manga/{self._id}/chapters"
-        self._manga_data = None
-
+        # Manga data has not been initalised, defer update
+        do_update = kwargs.pop("update")
+        kwargs["update"] = False
         super().__init__(*args, **kwargs)
 
+        self._id = self.RE_URL.findall(self.database["url"])[0][0]
+        if not self.database.get("api_url"):
+            self.database["api_url"] = f"{self.API_URL}/manga/{self._id}/chapters"
+
+        self._manga_data = [
+            c
+            for c in self.session.get(self.database["api_url"]).json()["data"][
+                "chapters"
+            ]
+            if c["language"] == "gb"  # multi-language support?
+        ]
+        self._manga_data.reverse()
+
+        # update now
+        if do_update:
+            self.update()
+
     def get_title(self):
-        return json.loads(_as_raw(self.soup))["data"]["chapters"][0]["mangaTitle"]
+        return self.soup.find("span", class_="mx-1").text
 
     def get_pages(self, url):
         chapter_data = self.session.get(url).json()["data"]
@@ -37,14 +50,6 @@ class Manga(GenericManga):
         ]
 
     def get_chapters(self):
-        if self._manga_data is None:
-            self._manga_data = [
-                c
-                for c in json.loads(_as_raw(self.soup))["data"]["chapters"]
-                if c["language"] == "gb"  # multi-language support?
-            ]
-            self._manga_data.reverse()
-
         previous_volume = "0"
         for chapter in self._manga_data:
             volume = chapter["volume"]
