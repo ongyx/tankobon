@@ -2,6 +2,7 @@
 """tankobon (漫画): Manga downloader and scraper."""
 
 import abc
+import concurrent.futures
 import functools
 import logging
 import pathlib
@@ -152,19 +153,14 @@ class GenericManga(abc.ABC):
         if chapter_info.get("pages"):
             _log.info(f"[parse] skipping {chapter}")
             return None, None
-        _log.info(f"[parse] parsing {chapter}")
         return chapter, self.get_pages(chapter_info["url"])
 
-    def parse(
-        self, chapters: Optional[List[str]] = None, threads: int = utils.THREADS
-    ) -> List[str]:
+    def parse(self, chapters: Optional[List[str]] = None) -> List[str]:
         """Parse chapters, adding their pages to the database.
 
         Args:
             chapters: The chapters to parse. If None, all chapters are parsed.
                 Defaults to None.
-            threads: How many threads to use to speed up parsing.
-                Defaults to THREADS (8).
 
         Returns:
             The chapters that were parsed.
@@ -172,15 +168,22 @@ class GenericManga(abc.ABC):
         if chapters is None:
             chapters = self.database["chapters"].keys()
 
-        with Pool(threads) as pool:
-            results = pool.imap_unordered(
-                self._parse, [(c, self.database["chapters"][c]) for c in chapters]
-            )
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            results = {
+                pool.submit(
+                    self.get_pages, self.database["chapters"][chapter]["url"]
+                ): chapter
+                for chapter in chapters
+                if not self.database["chapters"][chapter].get("pages")
+            }
 
-            for chapter, pages in results:
+            for future in concurrent.futures.as_completed(results):
+                chapter = results[future]
+                pages = future.result()
                 if not chapter or not pages:
                     continue
                 self.database["chapters"][chapter]["pages"] = pages
+                _log.info(f"[parse] parsed {chapter}")
 
         return chapters
 
@@ -189,7 +192,6 @@ class GenericManga(abc.ABC):
         path: Union[str, pathlib.Path],
         chapters: Optional[List[str]] = None,
         force: bool = False,
-        threads: int = utils.THREADS,
         cooldown: int = 2,
     ) -> None:
         """Download chapters, caching its pages on disk.
@@ -199,13 +201,11 @@ class GenericManga(abc.ABC):
             chapters: The chapters to download. Defaults to all chapters.
             force: Whether or not to re-download chapters, regardless if they are
                 already downloaded. Defaults to False.
-            threads: The number of threads to use to download the pages.
-                Defaults to utils.THREADS (8).
             cooldown: How long to wait before downloading each page.
                 Defaults to 2.
         """
 
-        path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
+        path = pathlib.Path(path)
 
         chapters = self.parse(chapters=chapters)
 
@@ -232,10 +232,15 @@ class GenericManga(abc.ABC):
                 chapter_path.mkdir(exist_ok=True)
                 urls = self.database["chapters"][chapter]["pages"]
 
-                with Pool(threads) as pool:
-                    responses = pool.imap(session_get, urls)
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    responses = {
+                        pool.submit(session_get, url): page
+                        for page, url in enumerate(urls)
+                    }
 
-                    for page_number, response in enumerate(responses):
+                    for future in concurrent.futures.as_completed(responses):
+                        page_number = responses[future]
+                        response = future.result()
                         _log.debug(
                             "[download] downloaded page %s from %s",
                             page_number,
@@ -319,16 +324,13 @@ class GenericManga(abc.ABC):
                     pdf.add_page()
                     # FIXME: pages are not resized correctly
                     width, height = imagesize.get(page)
-                    a4width = 210
-                    a4height = 297
+                    page_width = 210
+                    page_height = 297
+                    ratio = min(page_width / width, page_height / height)
 
                     # figure out which dimention has to be auto-calculated
-                    if (width / a4width) < (height / a4height):
-                        a4height = 0
-                    else:
-                        a4width = 0
                     try:
-                        pdf.image(page, 0, 0, w=a4width, h=a4height)
+                        pdf.image(page, 0, 0, w=width * ratio, h=height * ratio)
                     except RuntimeError as e:
                         raise RuntimeError(page, e)
 

@@ -11,7 +11,6 @@ import natsort
 
 from tankobon.__version__ import __version__
 from tankobon.store import Store
-from tankobon.utils import THREADS
 
 # monkey-patch options
 click.option = partial(click.option, show_default=True)  # type: ignore
@@ -83,12 +82,6 @@ def info(name, chapter):
 @click.argument("url")
 @click.option("-d", "--dir", help="where to download to", default=".")
 @click.option(
-    "-t",
-    "--threads",
-    help="how many threads to use to download the manga",
-    default=THREADS,
-)
-@click.option(
     "-p",
     "--pdf",
     help=(
@@ -123,7 +116,7 @@ def info(name, chapter):
 #    is_flag=True,
 #    default=False,
 # )
-def download(url, dir, threads, pdf, no_download, index, chapters):
+def download(url, dir, pdf, no_download, index, chapters):
     """Download a manga from url to path."""
     # the url acts as the id here
     dir = pathlib.Path(dir)
@@ -155,13 +148,11 @@ def download(url, dir, threads, pdf, no_download, index, chapters):
             else:
                 if chapters_to_download:
                     # download user requested chapters
-                    manga.download_chapters(
-                        dir, chapters=list(chapters_to_download), threads=threads
-                    )
+                    manga.download_chapters(dir, chapters=list(chapters_to_download))
 
                 elif pdf != "none":
                     # download user requested volumes
-                    manga.download_volumes(dir, pdf.split("/"), threads=threads)
+                    manga.download_volumes(dir, pdf.split("/"))
 
                 elif chapters == "all":
                     # download all chapters
