@@ -107,7 +107,7 @@ def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.
     """
 
     path = path.with_suffix(get_file_extension(res))
-    with path.open("wb+") as f:
+    with path.open("wb") as f:
         f.write(res.content)
 
     return path

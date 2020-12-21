@@ -18,7 +18,7 @@ class Manga(GenericManga):
 
     def __init__(self, *args, **kwargs):
         # Manga data has not been initalised, defer update
-        do_update = kwargs.pop("update")
+        do_update = kwargs.get("update") or False
         kwargs["update"] = False
         super().__init__(*args, **kwargs)
 

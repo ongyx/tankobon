@@ -101,6 +101,9 @@ class Store(object):
         index_path: Optional[Union[str, pathlib.Path]] = None,
         **kwargs,
     ) -> None:
+        if url.endswith("/"):
+            url = url[:-1]
+
         store = STORES.get(urlparse(url).netloc) or store
         if store not in self.available:
             raise ValueError(f"store '{store}' does not exist")

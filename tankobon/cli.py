@@ -46,7 +46,7 @@ def store():
 
 
 @store.command()
-def list():
+def show():
     """List all stores available, and their downloaded mangas."""
     for k, v in Store._index.items():
         click.echo(f"{k}/")
@@ -109,13 +109,6 @@ def info(name, chapter):
     help="chapters to download, seperated by slashes (1/2/3) or a range (1-3). Both can be mixed: (1/2-5).",
     default="all",
 )
-# @click.option(
-#    "-f",
-#    "--force",
-#    help="reparse all chapters and pages, regardless whether or not they have already been parsed",
-#    is_flag=True,
-#    default=False,
-# )
 def download(url, dir, pdf, no_download, index, chapters):
     """Download a manga from url to path."""
     # the url acts as the id here
@@ -131,30 +124,34 @@ def download(url, dir, pdf, no_download, index, chapters):
     store = Store(url, index_path=index, update=True)
     with store as manga:
 
-        chapters_to_download = set()
         all_chapters = manga.sorted()
-        if chapters != "all":
+        if chapters == "all":
+            chapters_to_download = set(all_chapters)
+        else:
+            chapters_to_download = set()
             for chapter in chapters.split("/"):
                 if "-" in chapter:
-                    start, _, end = chapter.partition("-")
+                    start, end = chapter.split("-")
                     for c in all_chapters[
                         all_chapters.index(start) : all_chapters.index(end) + 1
                     ]:
                         chapters_to_download.add(c)
+                else:
+                    chapters_to_download.add(chapter)
 
         try:
             if no_download:
                 manga.parse()
             else:
-                if chapters_to_download:
+                if chapters != "all":
                     # download user requested chapters
                     manga.download_chapters(dir, chapters=list(chapters_to_download))
 
                 elif pdf != "none":
                     # download user requested volumes
-                    manga.download_volumes(dir, pdf.split("/"))
+                    manga.download_volumes(dir, volumes=pdf.split("/"))
 
-                elif chapters == "all":
+                else:
                     # download all chapters
                     manga.download_chapters(dir)
 

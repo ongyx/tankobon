@@ -2,6 +2,7 @@
 """tankobon (漫画): Manga downloader and scraper."""
 
 import abc
+import collections
 import concurrent.futures
 import functools
 import logging
@@ -148,12 +149,12 @@ class GenericManga(abc.ABC):
         """
         return {}
 
-    def _parse(self, args):
-        chapter, chapter_info = args
-        if chapter_info.get("pages"):
-            _log.info(f"[parse] skipping {chapter}")
-            return None, None
-        return chapter, self.get_pages(chapter_info["url"])
+    def _build_volumes(self) -> Dict[str, List[str]]:
+        volumes = collections.defaultdict(list)
+        for chapter, chapter_info in self.database["chapters"].items():
+            volume = chapter_info.get("volume") or "0"
+            volumes[volume].append(chapter)
+        return volumes
 
     def parse(self, chapters: Optional[List[str]] = None) -> List[str]:
         """Parse chapters, adding their pages to the database.
@@ -187,6 +188,30 @@ class GenericManga(abc.ABC):
 
         return chapters
 
+    def _download_page(
+        self,
+        chapter_path: pathlib.Path,
+        page_number: int,
+        cooldown: int,
+        *args,
+        **kwargs,
+    ):
+        time.sleep(cooldown)
+        with self.session.get(*args, **kwargs) as response:
+            _log.debug(
+                "[download] downloaded page %s from %s",
+                page_number,
+                response.url,
+            )
+
+            page_path = chapter_path / f"{page_number}"
+            try:
+                # return path to page
+                return utils.save_response(page_path, response)
+            except KeyError:
+                # there is no content type (text/html, problably)
+                raise TankobonError(f"page '{response.url}' is not an image")
+
     def download_chapters(
         self,
         path: Union[str, pathlib.Path],
@@ -209,15 +234,6 @@ class GenericManga(abc.ABC):
 
         chapters = self.parse(chapters=chapters)
 
-        def session_get(*args, **kwargs):
-            nonlocal self
-            nonlocal cooldown
-            time.sleep(cooldown)
-            try:
-                return self.session.get(*args, **kwargs)
-            except requests.exceptions.ConnectionError as e:
-                _log.error("%s: @s", e, str(args))
-
         _log.info(f"[download] {len(chapters)} chapters to download, starting")
 
         for chapter in chapters:
@@ -233,28 +249,17 @@ class GenericManga(abc.ABC):
                 urls = self.database["chapters"][chapter]["pages"]
 
                 with concurrent.futures.ThreadPoolExecutor() as pool:
-                    responses = {
-                        pool.submit(session_get, url): page
+                    responses = [
+                        pool.submit(
+                            self._download_page, chapter_path, page, cooldown, url
+                        )
                         for page, url in enumerate(urls)
-                    }
+                    ]
 
                     for future in concurrent.futures.as_completed(responses):
-                        page_number = responses[future]
-                        response = future.result()
-                        _log.debug(
-                            "[download] downloaded page %s from %s",
-                            page_number,
-                            response.url,
-                        )
+                        # just run the function, no need for the return result
+                        __ = future.result()
 
-                        page_path = chapter_path / f"{page_number}"
-                        try:
-                            utils.save_response(page_path, response)
-                        except KeyError:
-                            # there is no content type (text/html, problably)
-                            raise TankobonError(
-                                f"page '{response.url}' is not an image"
-                            )
             except:  # noqa: E722
                 _log.critical(
                     "[download] could not download all pages for chapter %s, removing chapter dir",
@@ -266,7 +271,7 @@ class GenericManga(abc.ABC):
     def download_volumes(
         self,
         path: Union[str, pathlib.Path],
-        volumes: List[str] = [],
+        volumes: Optional[List[str]] = None,
         add_cover: bool = False,
         **kwargs,
     ) -> None:
@@ -280,28 +285,21 @@ class GenericManga(abc.ABC):
                 Defaults to False.
             **kwargs: Passed to download_chapters.
         """
-        path = pathlib.Path(path) if not isinstance(path, pathlib.Path) else path
+        path = pathlib.Path(path)
 
-        # we use sets for faster lookup
-        _volumes = set(volumes) or {
-            c.get("volume") or "0" for c in self.database["chapters"].values()
-        }
-        volume_map: Dict[str, List[str]] = {v: [] for v in _volumes}
+        all_volumes = self._build_volumes()
+        if volumes is None:
+            volumes = list(all_volumes.keys())
 
-        for chapter, chapter_info in self.database["chapters"].items():
-            volume = chapter_info.get("volume") or "0"
-            # volume may not be specified, so add to volume 0
-            if volume not in volume_map:
-                _log.debug("[volume] skipping chapter %s", chapter)
-                continue
+        for volume in volumes:
+            chapters = all_volumes[volume]
 
-            volume_map[volume].append(chapter)
-
-        for volume, chapters in volume_map.items():
             # download required chapters first
             self.download_chapters(path, chapters=chapters, **kwargs)
+
             _log.info("[pdf] creating pdf for volume %s", volume)
             pdf = fpdf.FPDF()
+
             cover_url = self.database["covers"].get(volume)
             if cover_url is not None and add_cover:
                 _log.debug("[pdf] adding cover from %s", cover_url)
@@ -322,13 +320,13 @@ class GenericManga(abc.ABC):
                 ):
                     _log.debug("[pdf] adding page %s", page)
                     pdf.add_page()
-                    # FIXME: pages are not resized correctly
+
                     width, height = imagesize.get(page)
                     page_width = 210
                     page_height = 297
                     ratio = min(page_width / width, page_height / height)
 
-                    # figure out which dimention has to be auto-calculated
+                    # use ratio to scale correctly
                     try:
                         pdf.image(page, 0, 0, w=width * ratio, h=height * ratio)
                     except RuntimeError as e:
