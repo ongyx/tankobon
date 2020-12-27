@@ -45,8 +45,8 @@ def store():
     """Manage stores."""
 
 
-@store.command()
-def show():
+@store.command("list")
+def store_list():
     """List all stores available, and their downloaded mangas."""
     for k, v in Store._index.items():
         click.echo(f"{k}/")
@@ -58,13 +58,13 @@ def show():
 def _print_chapter_info(database):
     for key in ("title", "url"):
         click.echo(f"{key.title()}: {database[key]}")
-    click.echo(f"# of pages: {len(database['pages'])}")
+    click.echo(f"# of pages: {len(database.get('pages') or [])}")
 
 
-@store.command()
+@store.command("info")
 @click.argument("name")
 @click.option("-c", "--chapter", help="get info on a specific chapter", default="none")
-def info(name, chapter):
+def store_info(name, chapter):
     """Show infomation on a specific manga, where name is in the format 'store_name/manga_name'."""
     store_name, _, manga_name = name.partition("/")
     database = Store._index[store_name][manga_name]

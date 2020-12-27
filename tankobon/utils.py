@@ -2,9 +2,10 @@
 """Utilities for tankobon.
 """
 
+import logging
 import pathlib
 import re
-from typing import Union, Optional
+from typing import Optional, Union
 
 import bs4
 import filetype
@@ -13,9 +14,11 @@ import requests_random_user_agent  # noqa: F401
 
 Number = Union[int, float]
 
+_log = logging.getLogger("tankobon")
+
 # Downloader config
 BSOUP_PARSER = "html5lib"  # if you want, change to lxml for faster parsing
-TIMEOUT = 5
+TIMEOUT = 10
 COOLDOWN = 0.5
 THREADS = 8
 
@@ -25,6 +28,22 @@ FILE_EXTENSIONS = {
     "image/png": "png",
     "image/gif": "gif",
 }
+
+
+def filesize(content: bytes) -> str:
+    """Create a human-readable filesize for content.
+
+    Args:
+        content: The bytes to get the size of.
+    Returns:
+        A string of the filesize ending in B, kB, etc.
+    """
+    filesize = float(len(content))
+    for suffix in ["B", "KiB", "MiB", "GiB"]:
+        if filesize < 1024.0 or suffix == "GiB":
+            break
+        filesize /= 1024.0
+    return f"{filesize:.1f} {suffix}"
 
 
 def get_file_extension(response: requests.models.Response) -> str:
@@ -56,10 +75,10 @@ def sanitize_filename(name: str) -> str:
         The sanitised name as a string.
     """
 
-    sanitised = "".join([c if _is_valid_char(c) else "_" for c in name])
+    sanitised = "".join([c.lower() if _is_valid_char(c) else "_" for c in name])
 
     # remove duplicate underscores
-    return re.sub("_{2,}", "_", sanitised)
+    return re.sub("_{2,}", "_", sanitised).strip("_")
 
 
 def get_soup(
@@ -109,5 +128,8 @@ def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.
     path = path.with_suffix(get_file_extension(res))
     with path.open("wb") as f:
         f.write(res.content)
+    _log.debug(
+        "saved response from %s at %s (%s)", res.url, path, filesize(res.content)
+    )
 
     return path

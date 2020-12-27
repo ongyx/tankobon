@@ -198,12 +198,6 @@ class GenericManga(abc.ABC):
     ):
         time.sleep(cooldown)
         with self.session.get(*args, **kwargs) as response:
-            _log.debug(
-                "[download] downloaded page %s from %s",
-                page_number,
-                response.url,
-            )
-
             page_path = chapter_path / f"{page_number}"
             try:
                 # return path to page
