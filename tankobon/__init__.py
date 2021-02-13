@@ -1,3 +1,4 @@
 # coding: utf8
-"""Manga browser/downloader."""
-from .__version__ import __version__  # noqa: F401
+"""Yet another manga scraper and downloader"""
+
+__version__ = "5.0.0b0"

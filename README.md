@@ -23,42 +23,44 @@ tankobon is a website scraper for comics and mangas. tankobon relies on **stores
 ## Creating a Store
 
 A store is a regular Python module in the `stores/` folder.
-It should provide a `Manga` class, which is a subclass of `tankobon.base.GenericManga`.
+It should provide a `Parser` class, which is a subclass of `tankobon.manga.Parser`.
 The following methods below **must** be implemented:
 
-### `get_chapters(self) -> Generator[Tuple[str, Dict[str, str]], None, None]`
+### `chapters(self) -> Generator[Tuple[str, Dict[str, str]], None, None]`
 
-Yield a two-tuple of (chapter_number, chapter_info) where chapter_info looks like this:
+Yields chapter_info which looks like this:
 ```python
 {
+    "id": ...,  # chapter number
     "title": ...,  # chapter title
     "url": ...,  # chapter url
     "volume": ...,  # volume, i.e '0'
 }
 ```
 
-Volume may or may not be given; no volume implies volume `0`. Example:
+Volume is optional and may be undefined. Example:
 
 ```python
-def get_chapters(self):
+def chapters(self):
     # use self.soup to access the title page
     for href in self.soup.find_all("a", href=True):
         # validify href here and parse chapter id
         ...
-        yield chapter_id, {"title": href.text, "url": href["href"]}
+        yield {"id": ..., "title": href.text, "url": href["href"]}
 ```
 
-### `get_pages(self, chapter_url: str) -> List[str]`
+### `pages(self, chapter_data: Dict[str, str]) -> List[str]`
 
-Return a list of urls to a chapter's pages, given its url.
+Return a list of urls to a chapter's pages, given the chapter data yielded from `chapters()`.
 The pages **must** be in order (page 1 is [0], page 2 is [1], etc.) Example:
 
 ```python
-def get_pages(self, chapter_url):
+def pages(self, chapter_data):
     pages = []
     # to get the chapter's html, use self.session.get (requests session)
-    # or self.get_soup (html already parsed by BeautifulSoup).
-    chapter_page = self.get_soup(chapter_url)
+    # or self.soup (html already parsed by BeautifulSoup).
+    chapter_page = self.soup_from_url(chapter_data["url"])
+
     for href in chapter_page.find_all("a", href=True):
         # validify href here
         ...
@@ -68,30 +70,13 @@ def get_pages(self, chapter_url):
 
 The following methods below _may_ or _may not_ be implemented: generic implementations are provided.
 
-### `get_title(self) -> str`
+### `title(self) -> str`
 
 Return the title of the manga. Example:
 
 ```python
-def get_title(self):
+def title(self):
     return self.soup.title
-```
-
-### `get_covers(self) -> Dict[str, str]`
-
-Return a dictionary map of volume (i.e '0', '1') to its cover. Example:
-
-```python
-def get_covers(self):
-    # The website might have a different api to obtain covers,
-    # but we'll just fake one here.
-
-    # (And yes, I do know dictionary comprehensions are better.)
-    covers = {}
-    for cover in self.soup.find_all("li"):
-        covers[cover.a.text] = cover.a["href"]
-    
-    return covers
 ```
 
 ## Index Compatibility
