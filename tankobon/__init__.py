@@ -1,4 +1,4 @@
 # coding: utf8
 """Yet another manga scraper and downloader"""
 
-__version__ = "5.0.0b0"
+from tankobon.__version__ import __version__  # noqa: W0611
