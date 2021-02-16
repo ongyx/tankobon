@@ -22,7 +22,6 @@ Typically, parsers make heavy use of regexes and leverage the BeautifulSoup API 
 ...     def pages(self, soup):
 ...         return [tag["href"] for tag in soup.find_all("a", href=True)]
 
-
 When subclassed, the new parser will automatically be registered.
 The parser will then be delegated to based on the domain name (using urlparse's netloc):
 
@@ -88,11 +87,18 @@ class Cache:
     def __init__(self, path: pathlib.Path = CACHE_PATH):
         self._path = path
 
+    @property
+    def manga_names(self):
+        return [p.stem for p in self._path.glob("*.json")]
+
     def load(self, url: str) -> manga.Parser:
-        """Initalize a parser with its previously cached metadata.
+        """Initalize a parser by url with its previously cached metadata.
 
         Args:
             url: The manga website url.
+
+        Returns:
+            The parser.
         """
 
         parser = load({"url": url})
@@ -104,6 +110,21 @@ class Cache:
                 parser.data.update(json.load(f))
 
         return parser
+
+    def loads(self, name: str) -> manga.Parser:
+        """Initalize a parser by name with its previous cached metadata.
+
+        name: The manga name.
+            Loadable manga names can be accessed through .manga_names.
+
+        Returns:
+            The parser.
+        """
+
+        metadata = self._path / name
+
+        with metadata.open() as f:
+            return load(json.load(f))
 
     def dump(self, parser: manga.Parser) -> None:
         """Cache the updated metadata of a parser.

@@ -93,6 +93,9 @@ class Parser(abc.ABC):
         return self
 
     def __exit__(self, t, v, tb):
+        self.close()
+
+    def close(self) -> None:
         self.session.close()
         self.soup.decompose()
 
@@ -151,11 +154,15 @@ class Parser(abc.ABC):
 
         _log.info("[parse] adding chapters")
 
+        pool = cfutures.ThreadPoolExecutor()
+
+        results = {}
+
         for chapter_data in self.chapters():
             chapter_id = chapter_data.pop("id")
 
             if chapter_id in self.data["chapters"] and not force:
-                _log.debug("[parse] skipping chapter %s", chapter_id)
+                _log.info("[parse] skipping chapter %s", chapter_id)
                 continue
 
             if "volume" not in chapter_data:
@@ -164,28 +171,36 @@ class Parser(abc.ABC):
 
             self.data["chapters"][chapter_id] = chapter_data
 
-        _log.info("[parse] adding pages")
+            # add task to pool
+            future = pool.submit(self.pages, self.soup_from_url(chapter_data["url"]))
+            results[future] = chapter_id
 
-        with cfutures.ThreadPoolExecutor() as pool:
-            results = {
-                pool.submit(self.pages, self.soup_from_url(chapter["url"])): chapter_id
-                for chapter_id, chapter in self.data["chapters"].items()
-            }
+        for future in cfutures.as_completed(results):
+            chapter_id = results[future]
+            pages = future.result()
 
-            for future in cfutures.as_completed(results):
-                chapter_id = results[future]
-                pages = future.result()
+            _log.info(
+                "[parse] adding %s pages to chapter %s", str(len(pages)), chapter_id
+            )
+            self.data["chapters"][chapter_id]["pages"] = pages
 
-                _log.info(
-                    "[parse] adding %s pages to chapter %s", str(len(pages)), chapter_id
-                )
-                self.data["chapters"][chapter_id]["pages"] = pages
+        _log.info("[parse] done")
+        pool.shutdown()
 
 
 class Downloader:
     def __init__(self, data: MangaData) -> None:
         self.data = data
         self.session = utils.TimedSession()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, t, v, tb):
+        self.close()
+
+    def close(self) -> None:
+        self.session.close()
 
     def download(
         self,
@@ -250,7 +265,7 @@ class Downloader:
                     raise e
 
                 else:
-                    _log.debug("saving chapter/page %s/%s", chapter, page)
+                    _log.info("saving chapter/page %s/%s", chapter, page)
                     utils.save_response(page_path, resp)
 
     def export_pdf(self, volume: str, to: tp.Union[str, pathlib.Path]) -> None:

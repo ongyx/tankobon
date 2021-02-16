@@ -6,7 +6,7 @@ import logging
 import click
 import coloredlogs  # type: ignore
 
-from tankobon import __version__, parsers
+from tankobon import __version__, manga, parsers
 
 click.option = functools.partial(click.option, show_default=True)  # type: ignore
 
@@ -34,6 +34,13 @@ def cli(verbosity):
     )
 
 
+def _parse(url, force):
+    with cache.load(url) as parser:
+        parser.parse(force=force)
+        cache.dump(parser)
+        return parser.data
+
+
 @cli.command()
 @click.argument("url")
 @click.option(
@@ -41,10 +48,32 @@ def cli(verbosity):
 )
 def parse(url, force):
     """Parse a manga's metadata from url and cache it on disk."""
+    _parse(url, force)
 
-    with cache.load(url) as parser:
-        parser.parse(force=force)
-        cache.dump(parser)
+
+@cli.command()
+@click.argument("url")
+@click.option("-p", "--path", default=".", help="where to download to")
+@click.option(
+    "-c",
+    "--chapters",
+    default="all",
+    help="chapters to download, seperated by slashes ('/')",
+)
+@click.option(
+    "-f", "--force", default=False, is_flag=True, help="re-download existing pages"
+)
+def download(url, path, chapters, force):
+    """Download a manga's pages."""
+    data = _parse(url, False)
+
+    if chapters == "all":
+        chapters = list(data["chapters"])
+    else:
+        chapters = chapters.split("/")
+
+    downloader = manga.Downloader(data)
+    downloader.download(path, chapters=chapters, force=force)
 
 
 if __name__ == "__main__":

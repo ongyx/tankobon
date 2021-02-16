@@ -60,11 +60,11 @@ class Parser(manga.Parser):
     def pages(self, soup):
         chapter_data = json.loads(soup.text)["data"]
 
-        chapter_id = chapter_data["hash"]
+        chapter_hash = chapter_data["hash"]
         pages = chapter_data["pages"]
-        base_url = chapter_data.get("serverFallback") or chapter_data["server"]
+        base_url = chapter_data["server"]
 
-        return [f"{base_url}{chapter_id}/{page}" for page in pages]
+        return [f"{base_url}{chapter_hash}/{page}" for page in pages]
 
     def title(self):
         return self.soup.find("span", class_="mx-1").text

@@ -19,7 +19,7 @@ _log = logging.getLogger("tankobon")
 
 # Downloader config
 BSOUP_PARSER = "html5lib"  # if you want, change to lxml for faster parsing
-TIMEOUT = 5
+TIMEOUT = 15
 COOLDOWN = 2
 
 # map to mimetypes (mimetypes module sucks)
