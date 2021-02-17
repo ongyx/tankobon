@@ -162,7 +162,7 @@ class Parser(abc.ABC):
             chapter_id = chapter_data.pop("id")
 
             if chapter_id in self.data["chapters"] and not force:
-                _log.info("[parse] skipping chapter %s", chapter_id)
+                _log.info("[parse] chapter %s already parsed, skipping", chapter_id)
                 continue
 
             if "volume" not in chapter_data:
@@ -208,7 +208,7 @@ class Downloader:
         chapters: tp.Optional[tp.List[str]] = None,
         force: bool = False,
         cooldown: int = utils.COOLDOWN,
-    ):
+    ) -> None:
         """Download the manga to disk.
         Each chapter will be downloaded to its own folder (1, 2, 3, etc).
 
@@ -220,6 +220,9 @@ class Downloader:
                 Defaults to False.
             cooldown: How long to wait between downloading each page.
                 Defaults to utils.COOLDOWN.
+
+        Returns:
+            A dict map of chapter_id to a list of page filenames (i.e 1.png, 2.png, etc.)
         """
 
         path = pathlib.Path(path)
@@ -231,9 +234,8 @@ class Downloader:
                 chapter_path = path / chapter
 
                 if chapter_path.is_dir():
+                    _log.info("[download] chapter %s exists, skipping", chapter)
                     continue
-                else:
-                    chapter_path.mkdir()
 
                 for page_number, page in enumerate(
                     self.data["chapters"][chapter]["pages"]
@@ -255,7 +257,7 @@ class Downloader:
 
                 except Exception as e:
                     _log.critical(
-                        "could not download page %s for chapter %s: %s",
+                        "[download] could not download page %s for chapter %s: %s",
                         page,
                         chapter,
                         e,
@@ -265,7 +267,9 @@ class Downloader:
                     raise e
 
                 else:
-                    _log.info("saving chapter/page %s/%s", chapter, page)
+                    _log.info("[download] saving chapter/page %s/%s", chapter, page)
+
+                    page_path.parent.mkdir(exist_ok=True)
                     utils.save_response(page_path, resp)
 
     def export_pdf(self, volume: str, to: tp.Union[str, pathlib.Path]) -> None:

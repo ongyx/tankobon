@@ -29,6 +29,7 @@ The parser will then be delegated to based on the domain name (using urlparse's 
 >>> parser = parsers.load({"url": "https://my-website.com/manga/12345"})
 """
 
+import collections
 import json
 import pathlib
 
@@ -42,9 +43,14 @@ from tankobon._parsers import (  # noqa: W0611 type: ignore
     komi_san,
 )
 
+INDENT = 4
+
 # Manga metadata is stored here using a filename-safe version of its title.
 CACHE_PATH = pathlib.Path.home() / ".tankobon"
 CACHE_PATH.mkdir(exist_ok=True)
+
+# This file maps manga URLs to their filenames.
+INDEX_PATH = CACHE_PATH / "_index.json"
 
 
 def _create_filename(parser):
@@ -81,50 +87,76 @@ def load(*args, **kwargs) -> manga.Parser:
     return parser(*args, **kwargs)
 
 
+class Index(collections.UserDict):
+    """An index to keep track of manga metadata."""
+
+    def __init__(self, path: pathlib.Path = INDEX_PATH):
+        self._path = path
+        try:
+            with self._path.open() as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            data = {}
+
+        super().__init__(data)
+
+    def close(self):
+        with self._path.open("w") as f:
+            json.dump(self.data, f, indent=INDENT)
+
+
 class Cache:
     """A cache for manga metadata."""
 
     def __init__(self, path: pathlib.Path = CACHE_PATH):
         self._path = path
+        self._index = Index(self._path / "_index.json")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, t, v, tb):
+        self.close()
+
+    def close(self):
+        self._index.close()
 
     @property
     def manga_names(self):
-        return [p.stem for p in self._path.glob("*.json")]
+        return list(self._index.values())
 
-    def load(self, url: str) -> manga.Parser:
+    def load_metadata(self, url_or_name: str) -> dict:
+        """Load metadata for a manga.
+
+        Args:
+            url_or_name: The manga url/name.
+        """
+
+        name = self._index.get(url_or_name) or url_or_name
+
+        if name is not None:
+            try:
+                with (self._path / name).open() as f:
+                    return json.load(f)
+            except FileNotFoundError:
+                pass
+
+        # manga has no existing metadata
+        return {"url": url_or_name}
+
+    def load(self, url_or_name: str) -> manga.Parser:
         """Initalize a parser by url with its previously cached metadata.
 
         Args:
-            url: The manga website url.
+            url_or_name: The manga website url/filename-safe name (see .manga_names).
 
         Returns:
             The parser.
         """
 
-        parser = load({"url": url})
+        metadata = self.load_metadata(url_or_name)
 
-        metadata = self._path / _create_filename(parser)
-
-        if metadata.is_file():
-            with metadata.open() as f:
-                parser.data.update(json.load(f))
-
-        return parser
-
-    def loads(self, name: str) -> manga.Parser:
-        """Initalize a parser by name with its previous cached metadata.
-
-        name: The manga name.
-            Loadable manga names can be accessed through .manga_names.
-
-        Returns:
-            The parser.
-        """
-
-        metadata = self._path / name
-
-        with metadata.open() as f:
-            return load(json.load(f))
+        return load(data=metadata)
 
     def dump(self, parser: manga.Parser) -> None:
         """Cache the updated metadata of a parser.
@@ -133,7 +165,8 @@ class Cache:
             parser: The manga parser.
         """
 
-        metadata = self._path / _create_filename(parser)
+        name = _create_filename(parser)
+        self._index[parser.data["url"]] = name
 
-        with metadata.open("w") as f:
-            json.dump(parser.data, f, indent=4)
+        with (self._path / name).open("w") as f:
+            json.dump(parser.data, f, indent=INDENT)

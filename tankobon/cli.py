@@ -16,8 +16,6 @@ VERBOSITY = [
     for level in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
 ]
 
-cache = parsers.Cache()
-
 
 @click.group()
 @click.version_option(__version__)
@@ -35,7 +33,7 @@ def cli(verbosity):
 
 
 def _parse(url, force):
-    with cache.load(url) as parser:
+    with parsers.Cache() as cache, cache.load(url) as parser:
         parser.parse(force=force)
         cache.dump(parser)
         return parser.data
@@ -58,22 +56,34 @@ def parse(url, force):
     "-c",
     "--chapters",
     default="all",
-    help="chapters to download, seperated by slashes ('/')",
+    help="chapters to download, seperated by slashes (ignored if export-pdf is specified)",
 )
 @click.option(
     "-f", "--force", default=False, is_flag=True, help="re-download existing pages"
 )
-def download(url, path, chapters, force):
+@click.option(
+    "-e",
+    "--export-pdf",
+    default="none",
+    help="volumes to create pdfs for, seperated by slashes",
+)
+def download(url, path, chapters, force, export_pdf):
     """Download a manga's pages."""
     data = _parse(url, False)
 
     if chapters == "all":
-        chapters = list(data["chapters"])
+        chapters_list = list(data["chapters"])
     else:
-        chapters = chapters.split("/")
+        chapters_list = chapters.split("/")
 
     downloader = manga.Downloader(data)
-    downloader.download(path, chapters=chapters, force=force)
+
+    if export_pdf != "none":
+        # download only the chapters in the volume(s)
+        for volume in export_pdf.split("/"):
+            downloader.export_pdf(volume, path)
+    else:
+        downloader.download(path, chapters=chapters_list, force=force)
 
 
 if __name__ == "__main__":
