@@ -139,39 +139,73 @@ class Parser(abc.ABC):
             or self.soup.find("meta", property="og:title")["content"]
         )
 
+    def description(self) -> str:
+        """Parse the manga description.
+
+        Returns:
+            The description.
+        """
+        return ""
+
     def soup_from_url(self, url: str) -> bs4.BeautifulSoup:
         return bs4.BeautifulSoup(self.session.get(url).text, BS4_PARSER)
 
-    def parse(self, force: bool = False) -> None:
+    def refresh(self) -> None:
+        """Add any new chapters to the metadata."""
+
+        self.data["title"] = self.title()
+
+        _log.info("[refresh] adding new chapters")
+
+        for chapter_data in self.chapters():
+            chapter_id = chapter_data.pop("id")
+
+            _log.debug("[refresh] adding chapter %s", chapter_id)
+
+            if chapter_id in self.data["chapters"]:
+                continue
+
+            if "volume" not in chapter_data:
+                _log.warning("[refresh] chapter %s has no volume", chapter_id)
+                chapter_data["volume"] = VOLUME_NOTSET
+
+            self.data["chapters"][chapter_id] = chapter_data
+
+    def parse(
+        self, force: bool = False, refresh: bool = True, volume: tp.Optional[str] = None
+    ) -> None:
         """Parse pages from all the chapters.
 
         Args:
             force: Whether or not to parse chapters previously parsed.
                 Defaults to False.
+            refresh: Whether or not to refresh metadata for any new chapters before parsing.
+                Defaults to True.
+            volume: Parse chapters belonging only to a specific volume.
+                If None, all chapters are parsed.
+                Defaults to None.
         """
 
-        self.data["title"] = self.title()
-
-        _log.info("[parse] adding chapters")
-
         pool = cfutures.ThreadPoolExecutor()
-
         results = {}
 
-        for chapter_data in self.chapters():
-            chapter_id = chapter_data.pop("id")
+        if refresh:
+            self.refresh()
 
-            if chapter_id in self.data["chapters"] and not force:
+        for chapter_id, chapter_data in self.data["chapters"].items():
+
+            if chapter_data.get("pages") is not None and not force:
                 _log.info("[parse] chapter %s already parsed, skipping", chapter_id)
                 continue
 
-            if "volume" not in chapter_data:
-                _log.warning("[parse] chapter %s has no volume", chapter_id)
-                chapter_data["volume"] = VOLUME_NOTSET
-
-            self.data["chapters"][chapter_id] = chapter_data
+            if volume is not None and chapter_data["volume"] != volume:
+                _log.info(
+                    "[parse] chapter %s not in volume %s, skipping", chapter_id, volume
+                )
+                continue
 
             # add task to pool
+            _log.debug("[parse] submitting task for chapter %s", chapter_id)
             future = pool.submit(self.pages, self.soup_from_url(chapter_data["url"]))
             results[future] = chapter_id
 
@@ -192,6 +226,8 @@ class Downloader:
     def __init__(self, data: MangaData) -> None:
         self.data = data
         self.session = utils.TimedSession()
+
+        self.session.headers.update({"Referer": self.data["url"]})
 
     def __enter__(self):
         return self
@@ -267,7 +303,7 @@ class Downloader:
                     raise e
 
                 else:
-                    _log.info("[download] saving chapter/page %s/%s", chapter, page)
+                    _log.info("[download] saving page %s of chapter %s", page, chapter)
 
                     page_path.parent.mkdir(exist_ok=True)
                     utils.save_response(page_path, resp)

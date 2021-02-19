@@ -11,7 +11,7 @@ RE_CHAPTER = re.compile(r"Chapter (\d+)\:? ?([\w \(\)]*)")
 
 class Parser(manga.Parser):
 
-    domain = "m.mangabat.com"
+    domain = "mangabat.com"
 
     def chapters(self):
         for tag in self.soup.find_all("a", class_="chapter-name"):
@@ -33,3 +33,8 @@ class Parser(manga.Parser):
 
     def title(self):
         return RE_TITLE.findall(super().title())[0]
+
+    def description(self):
+        desc = self.soup.find("div", class_="panel-story-info-description")
+        desc.h3.decompose()
+        return desc.get_text(strip=True)

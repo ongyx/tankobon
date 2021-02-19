@@ -32,9 +32,9 @@ def cli(verbosity):
     )
 
 
-def _parse(url, force):
+def _parse(url, **kwargs):
     with parsers.Cache() as cache, cache.load(url) as parser:
-        parser.parse(force=force)
+        parser.parse(**kwargs)
         cache.dump(parser)
         return parser.data
 
@@ -46,7 +46,7 @@ def _parse(url, force):
 )
 def parse(url, force):
     """Parse a manga's metadata from url and cache it on disk."""
-    _parse(url, force)
+    _parse(url, force=force)
 
 
 @cli.command()
@@ -64,12 +64,12 @@ def parse(url, force):
 @click.option(
     "-e",
     "--export-pdf",
-    default="none",
+    default="",
     help="volumes to create pdfs for, seperated by slashes",
 )
 def download(url, path, chapters, force, export_pdf):
     """Download a manga's pages."""
-    data = _parse(url, False)
+    data = _parse(url, force=False, volume=export_pdf or None)
 
     if chapters == "all":
         chapters_list = list(data["chapters"])

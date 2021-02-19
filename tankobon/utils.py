@@ -22,13 +22,6 @@ BSOUP_PARSER = "html5lib"  # if you want, change to lxml for faster parsing
 TIMEOUT = 15
 COOLDOWN = 2
 
-# map to mimetypes (mimetypes module sucks)
-FILE_EXTENSIONS = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/gif": "gif",
-}
-
 RE_DOMAIN = re.compile(r"^(?:www\.)?(.*)(:(\d+))?$")
 
 
@@ -46,23 +39,6 @@ def filesize(content: bytes) -> str:
             break
         filesize /= 1024.0
     return f"{filesize:.1f} {suffix}"
-
-
-def get_file_extension(response: requests.models.Response) -> str:
-    """Get a extension from a response by parsing its mimetype.
-
-    Args:
-        response: The response object (from requests.get, et al.)
-    """
-
-    # FIXME: this code breaks if header is incorrect
-    # content_type = response.headers.get("Content-Type")
-    # if content_type is not None:
-    #    ext = FILE_EXTENSIONS[content_type.partition(";")[0]]
-    # else:
-    #    ext = response.url.rpartition(".")[-1]
-
-    return f".{FILE_EXTENSIONS[filetype.guess_mime(response.content)]}"
 
 
 def _is_valid_char(char):
@@ -127,7 +103,7 @@ def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.
         The full path to the file.
     """
 
-    path = path.with_suffix(get_file_extension(res))
+    path = path.with_suffix(f".{filetype.guess(res.content).extension}")
     with path.open("wb") as f:
         f.write(res.content)
     _log.debug(

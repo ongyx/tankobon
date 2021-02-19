@@ -27,10 +27,9 @@ requires-python = ">=3.6"
 jsonschema = [
     "jsonschema>=3.2.0",
 ]
-#gui = [
-#    "pyglet>=1.5.8",
-#    "pyglet-gui>=0.1",
-#]
+gui = [
+    "PySide6>=6.0.1",
+]
 pdf = [
     "fpdf>=1.7.2",
     "imagesize>=1.2.0",

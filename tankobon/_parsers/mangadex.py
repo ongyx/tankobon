@@ -20,25 +20,26 @@ class Parser(manga.Parser):
     domain = BASE_URL
 
     def __init__(self, *args, **kwargs):
+
+        data = kwargs.get("data") or args[0]
+        data["url"] = f"{API_URL}/manga/{_parse_id(data['url'])}"
+
         super().__init__(*args, **kwargs)
 
-        self._id = _parse_id(self.data["url"])
+        self.api_data = json.loads(self.soup.text)["data"]
 
-        if not self.data.get("api_url"):
-            self.data["api_url"] = f"{API_URL}/manga/{self._id}/chapters"
+    def chapters(self):
 
-        with self.session.get(self.data["api_url"]) as response:
-
-            self._manga_data = [
+        with self.session.get(f"{self.data['url']}/chapters") as response:
+            api_chapters = [
                 c
                 for c in response.json()["data"]["chapters"]
                 if c["language"] == "gb"  # FIXME: multi-language support
             ]
-            self._manga_data.reverse()
+            api_chapters.reverse()
 
-    def chapters(self):
         previous_volume = "0"
-        for chapter in self._manga_data:
+        for chapter in api_chapters:
             volume = chapter["volume"]
             if not volume:
                 volume = previous_volume
@@ -67,4 +68,7 @@ class Parser(manga.Parser):
         return [f"{base_url}{chapter_hash}/{page}" for page in pages]
 
     def title(self):
-        return self.soup.find("span", class_="mx-1").text
+        return self.api_data["title"]
+
+    def description(self):
+        return self.api_data["description"]

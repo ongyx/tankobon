@@ -24,7 +24,9 @@ class Parser(manga.Parser):
     def pages(self, soup):
         return [
             tag["src"]
-            for tag in soup.find("div", class_="vung-doc").find_all("img", src=True)
+            for tag in soup.find("div", class_="container-chapter-reader").find_all(
+                "img", src=True
+            )
         ]
 
     def title(self):

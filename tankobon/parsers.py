@@ -30,18 +30,11 @@ The parser will then be delegated to based on the domain name (using urlparse's 
 """
 
 import collections
+import importlib
 import json
 import pathlib
 
 from tankobon import manga, utils
-
-# import for side effects (register parsers)
-from tankobon._parsers import (  # noqa: W0611 type: ignore
-    mangadex,
-    mangabat,
-    mangakakalot,
-    komi_san,
-)
 
 INDENT = 4
 
@@ -51,6 +44,15 @@ CACHE_PATH.mkdir(exist_ok=True)
 
 # This file maps manga URLs to their filenames.
 INDEX_PATH = CACHE_PATH / "_index.json"
+
+
+def _register():
+    # import for side effects (register default parser classes)
+    for submodule in (pathlib.Path(__file__).parent / "_parsers").glob("*.py"):
+        _ = importlib.import_module(f"tankobon._parsers.{submodule.stem}")
+
+
+_register()
 
 
 def _create_filename(parser):
@@ -81,10 +83,17 @@ def load(*args, **kwargs) -> manga.Parser:
     domain = utils.parse_domain(data["url"])
 
     parser = manga._parsers.get(domain)
-    if parser is None:
-        raise ValueError(f"no parser exists for domain {domain}")
+    if parser is not None:
+        return parser(*args, **kwargs)
 
-    return parser(*args, **kwargs)
+    # domain does not need to match _exactly_.
+    # we don't need to mess around with TLDs, just do a substring check
+    for parser_domain, parser in manga._parsers.items():
+        if parser_domain in domain:
+            return parser(*args, **kwargs)
+
+    # no parser matches
+    raise ValueError(f"no parser exists for domain {domain}")
 
 
 class Index(collections.UserDict):
