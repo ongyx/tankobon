@@ -1,5 +1,6 @@
 # coding: utf8
 
+import html
 import json
 import re
 from urllib.parse import urlparse
@@ -8,11 +9,11 @@ from tankobon import manga
 
 BASE_URL = "mangadex.org"
 API_URL = f"https://{BASE_URL}/api/v2"
-RE_ID = re.compile(r"^/title/(\d+)/(\w+)/?(.*)$")
+RE_ID = re.compile(r"^/title/(\d+)")
 
 
 def _parse_id(url: str) -> str:
-    return RE_ID.findall(urlparse(url).path)[0][0]
+    return RE_ID.findall(urlparse(url).path)[0]
 
 
 class Parser(manga.Parser):
@@ -21,16 +22,19 @@ class Parser(manga.Parser):
 
     def __init__(self, *args, **kwargs):
 
-        data = kwargs.get("data") or args[0]
-        data["url"] = f"{API_URL}/manga/{_parse_id(data['url'])}"
-
         super().__init__(*args, **kwargs)
 
-        self.api_data = json.loads(self.soup.text)["data"]
+        api_url = self.data.get("api_url")
+        if api_url is None:
+            api_url = f"{API_URL}/manga/{_parse_id(self.data['url'])}"
+            self.data["api_url"] = api_url
+
+        with self.session.get(api_url) as resp:
+            self.api_data = resp.json()["data"]
 
     def chapters(self):
 
-        with self.session.get(f"{self.data['url']}/chapters") as response:
+        with self.session.get(f"{self.data['api_url']}/chapters") as response:
             api_chapters = [
                 c
                 for c in response.json()["data"]["chapters"]
@@ -71,4 +75,4 @@ class Parser(manga.Parser):
         return self.api_data["title"]
 
     def description(self):
-        return self.api_data["description"]
+        return html.unescape(self.api_data["description"])

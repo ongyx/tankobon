@@ -56,7 +56,7 @@ _register()
 
 
 def _create_filename(parser):
-    return f"{utils.sanitize_filename(parser.title())}.json"
+    return utils.sanitize_filename(parser.title())
 
 
 def load(*args, **kwargs) -> manga.Parser:
@@ -134,36 +134,40 @@ class Cache:
     def manga_names(self):
         return list(self._index.values())
 
-    def load_metadata(self, url_or_name: str) -> dict:
+    def load_metadata(self, name: str) -> dict:
         """Load metadata for a manga.
 
         Args:
-            url_or_name: The manga url/name.
+            name: The manga name/url.
+
+        Returns:
+            The manga metadata or an empty dict if the metadata does not exist.
         """
 
-        name = self._index.get(url_or_name) or url_or_name
+        if utils.is_url(name):
+            filename = self._index.get(name)
+        else:
+            filename = name
 
-        if name is not None:
-            try:
-                with (self._path / name).open() as f:
-                    return json.load(f)
-            except FileNotFoundError:
-                pass
+        if filename is not None:
+            with (self._path / f"{filename}.json").open() as f:
+                return json.load(f)
 
-        # manga has no existing metadata
-        return {"url": url_or_name}
+        return {}
 
-    def load(self, url_or_name: str) -> manga.Parser:
+    def load(self, url: str) -> manga.Parser:
         """Initalize a parser by url with its previously cached metadata.
 
         Args:
-            url_or_name: The manga website url/filename-safe name (see .manga_names).
+            url: The manga url.
 
         Returns:
             The parser.
         """
 
-        metadata = self.load_metadata(url_or_name)
+        metadata = self.load_metadata(url)
+        if not metadata:
+            metadata = {"url": url}
 
         return load(data=metadata)
 
@@ -175,7 +179,8 @@ class Cache:
         """
 
         name = _create_filename(parser)
-        self._index[parser.data["url"]] = name
+        url = parser.data["url"].rstrip("/")
+        self._index[url] = name
 
-        with (self._path / name).open("w") as f:
+        with (self._path / f"{name}.json").open("w") as f:
             json.dump(parser.data, f, indent=INDENT)

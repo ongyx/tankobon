@@ -1,5 +1,6 @@
 # coding: utf8
 
+import collections
 import functools
 import logging
 
@@ -15,6 +16,8 @@ VERBOSITY = [
     getattr(logging, level)
     for level in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
 ]
+
+MAX_COLUMNS = 10
 
 
 @click.group()
@@ -37,6 +40,47 @@ def _parse(url, **kwargs):
         parser.parse(**kwargs)
         cache.dump(parser)
         return parser.data
+
+
+def _info(metadata):
+    for key in ("title", "url", "description"):
+        click.echo(f"{key}: {metadata[key]}\n")
+
+    volumes = collections.defaultdict(list)
+    for chapter, data in metadata["chapters"].items():
+        volumes[data["volume"]].append(chapter)
+
+    click.echo()
+
+    click.echo("| volumes | chapters")
+    for volume, chapters in volumes.items():
+
+        chapters_str = f",\n| {' ' * 7} | ".join(
+            ", ".join(chapters[c : c + MAX_COLUMNS])
+            for c in range(0, len(chapters), MAX_COLUMNS)
+        )
+        click.echo("| {:<7} | {}".format(volume, chapters_str))
+
+    click.echo(
+        f"summary: {len(volumes)} volume(s), {len(metadata['chapters'])} chapter(s)"
+    )
+
+
+@cli.command()
+@click.option("-u", "--url", default="", help="show info on a specific manga")
+def info(url):
+    """Show info on parsed/downloaded manga."""
+    with parsers.Cache() as cache:
+        if url:
+            data = cache.load_metadata(url)
+            if data.get("title") is None:
+                click.echo(f"manga not found, run 'tankobon parse {url}' first")
+                return
+
+            _info(data)
+        else:
+            for url, name in cache._index.items():
+                click.echo(f"{url}: {name}")
 
 
 @cli.command()
@@ -68,7 +112,7 @@ def parse(url, force):
     help="volumes to create pdfs for, seperated by slashes",
 )
 def download(url, path, chapters, force, export_pdf):
-    """Download a manga's pages."""
+    """Download a manga's pages by name/url."""
     data = _parse(url, force=False, volume=export_pdf or None)
 
     if chapters == "all":

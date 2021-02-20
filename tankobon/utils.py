@@ -118,6 +118,12 @@ class TimedSession(requests.Session):
         return super().get(*args, timeout=TIMEOUT, **kwargs)
 
 
+def is_url(url: str) -> bool:
+    """Check whether or not a string is a url."""
+    result = urlparse(url)
+    return all([result.scheme, result.netloc, result.path])
+
+
 def parse_domain(url: str) -> str:
     """Parse out a url's domain.
 

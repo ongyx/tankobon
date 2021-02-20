@@ -53,6 +53,9 @@ class Parser(abc.ABC):
             On init, the 'data' arg is used to update these defaults into .data.
         session: The requests.Session used to retrieve urls.
         soup: The BeautifulSoup of the manga website.
+
+    Raises:
+        ValueError, if the url is invalid.
     """
 
     domain: tp.Optional[str] = None
@@ -71,15 +74,15 @@ class Parser(abc.ABC):
         self.data = self.DEFAULTS
         self.data.update(data)
 
-        if self.data["url"] is None:
-            raise ValueError("no webpage url in database")
+        url = self.data["url"]
+
+        if not utils.is_url(url):
+            raise ValueError(f"invalid url: {url}")
 
         self.session = utils.TimedSession()
-        self.session.headers.update(
-            {"Referer": self.data["url"], "User-Agent": _useragent.random}
-        )
+        self.session.headers.update({"Referer": url, "User-Agent": _useragent.random})
 
-        self.soup = self.soup_from_url(self.data["url"])
+        self.soup = self.soup_from_url(url)
 
     # implicitly register class
     def __init_subclass__(cls, **kwargs):
@@ -148,12 +151,13 @@ class Parser(abc.ABC):
         return ""
 
     def soup_from_url(self, url: str) -> bs4.BeautifulSoup:
-        return bs4.BeautifulSoup(self.session.get(url).text, BS4_PARSER)
+        return bs4.BeautifulSoup(self.session.get(url).content, BS4_PARSER)
 
     def refresh(self) -> None:
         """Add any new chapters to the metadata."""
 
         self.data["title"] = self.title()
+        self.data["description"] = self.description()
 
         _log.info("[refresh] adding new chapters")
 
@@ -205,7 +209,7 @@ class Parser(abc.ABC):
                 continue
 
             # add task to pool
-            _log.debug("[parse] submitting task for chapter %s", chapter_id)
+            _log.info("[parse] submitting task for chapter %s", chapter_id)
             future = pool.submit(self.pages, self.soup_from_url(chapter_data["url"]))
             results[future] = chapter_id
 
@@ -273,6 +277,7 @@ class Downloader:
                     _log.info("[download] chapter %s exists, skipping", chapter)
                     continue
 
+                print(chapter)
                 for page_number, page in enumerate(
                     self.data["chapters"][chapter]["pages"]
                 ):
