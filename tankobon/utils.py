@@ -45,7 +45,7 @@ def _is_valid_char(char):
     return char.isalnum()
 
 
-def sanitize_filename(name: str) -> str:
+def sanitize(name: str) -> str:
     """Sanitise a name so it can be used as a filename.
     Args:
         name: The name to sanitise.

@@ -8,7 +8,7 @@ import pathlib
 import click
 import coloredlogs  # type: ignore
 
-from . import __version__, core, parsers
+from . import __version__, core, parsers  # noqa: F401
 
 click.option = functools.partial(click.option, show_default=True)  # type: ignore
 
@@ -36,18 +36,29 @@ def cli(verbosity):
     )
 
 
-def _info(manga):
-    metadata = manga.meta.__dict__
+def _pprint(_dict):
 
-    for key in ("title", "url", "description"):
-        click.echo(f"{key}: {metadata[key]}\n")
+    for key, value in _dict.items():
+
+        # +2 for the ': ' suffix
+        indent = len(key) + 2
+
+        if isinstance(value, list):
+            value = f"\n{' ' * indent}".join(value)
+
+        click.echo(f"{key}: {value}\n")
+
+
+def _info(manga):
+
+    _pprint(manga.meta.__dict__)
 
     volumes = collections.defaultdict(list)
 
     for _, chapter in manga.chapter_data.items():
         volumes[chapter.volume].append(chapter.id)
 
-    click.echo("\n| volumes | chapters")
+    click.echo("| volumes | chapters")
     for volume, chapters in volumes.items():
 
         chapters_str = f",\n| {' ' * 7} | ".join(
@@ -56,4 +67,59 @@ def _info(manga):
         )
         click.echo("| {:<7} | {}".format(volume, chapters_str))
 
-    click.echo(f"summary: {len(volumes)} volume(s), {len(metadata)} chapter(s)")
+    n_vol = len(volumes)
+    n_chapter = len(manga.chapter_data)
+
+    click.echo(
+        f"summary: {n_vol} volume{'s' if n_vol > 1 else ''}, {n_chapter} chapter{'s' if n_chapter > 1 else ''}"
+    )
+
+
+@cli.command()
+@click.argument("url")
+@click.option("-c", "--chapter", help="show info only for a specific chapter")
+def info(url, chapter):
+    """Show info on a manga url."""
+
+    with core.Cache() as cache:
+
+        manga = cache.load(url)
+
+        if url not in cache.index:
+            cache.save(manga)
+
+        if chapter:
+            _pprint(manga.chapter_data[chapter].__dict__)
+        else:
+            _info(manga)
+
+
+@cli.command()
+@click.argument("url")
+@click.option(
+    "-p",
+    "--pages",
+    is_flag=True,
+    help="parse pages for chapters without any pages",
+)
+def refresh(url, pages):
+    """Create/refresh data for a manga by url.
+    You can add manga urls using this command (it will be created if it does not exist).
+    """
+
+    with core.Cache() as cache:
+
+        manga = cache.load(url)
+
+        manga.refresh(pages=pages)
+
+        cache.save(manga)
+
+
+@cli.command()
+@click.argument("url")
+def delete(url):
+    """Delete a manga by url from the cache."""
+
+    with core.Cache() as cache:
+        cache.delete(url)

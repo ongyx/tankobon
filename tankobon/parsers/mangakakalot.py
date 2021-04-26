@@ -2,13 +2,13 @@
 
 import re
 
-from tankobon import manga
+from .. import core
 
 
 RE_CHAPTER = re.compile(r".*[Cc]hapter ?([\d\.]+) ?:? ?(.*)")
 
 
-class Manga(manga.Manga):
+class Manga(core.Manga):
 
     domain = "mangakakalot.com"
 
@@ -16,14 +16,14 @@ class Manga(manga.Manga):
         info = self.soup.find(class_="manga-info-text").find_all("li")
 
         title_tag = info[0]
-        title = title_tag.h1.text
+        title = title_tag.h1.string
 
-        alt_titles_tag = title_tag.h2.text.partition(":")[-1]
-        alt_titles = [t.strip() for t in alt_titles_tag.split(",")]
+        alt_titles_tag = title_tag.h2.string.partition(":")[-1]
+        alt_titles = alt_titles_tag.split(",")
 
-        authors = [a.text for a in info[1].find_all("a")]
+        authors = [a.string for a in info[1].find_all("a")]
 
-        genres = [a.text.lower().replace(" ", "_") for a in info[6].find_all("a")]
+        genres = [a.string.lower().replace(" ", "_") for a in info[6].find_all("a")]
 
         desc_tag = self.soup.find(id=["panel-story-info-description", "noidungm"])
         try:
@@ -31,11 +31,11 @@ class Manga(manga.Manga):
         except AttributeError:
             pass
         finally:
-            desc = desc_tag.text
+            desc = desc_tag.string
 
         cover = self.soup.find("div", class_="manga-info-pic").img["src"]
 
-        return manga.Metadata(
+        return core.Metadata(
             url=self.meta.url,
             title=title,
             alt_titles=alt_titles,
@@ -51,9 +51,9 @@ class Manga(manga.Manga):
             if not link:
                 continue
 
-            cid, title = RE_CHAPTER.findall(link.text)[0]
+            cid, title = RE_CHAPTER.findall(link.string)[0]
 
-            yield manga.Chapter(
+            yield core.Chapter(
                 id=cid,
                 url=link["href"],
                 title=title,

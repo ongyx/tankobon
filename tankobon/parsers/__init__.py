@@ -41,8 +41,9 @@ import pathlib
 
 def _register():
     # import for side effects (register default parser classes)
-    for submodule in (pathlib.Path(__file__).parent / "_parsers").glob("*.py"):
-        _ = importlib.import_module(f"tankobon._parsers.{submodule.stem}")
+    for submodule in pathlib.Path(__file__).parent.glob("*.py"):
+        if submodule.stem != "__init__":
+            _ = importlib.import_module(f"tankobon.parsers.{submodule.stem}")
 
 
 _register()
