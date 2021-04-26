@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import abc
+import concurrent.futures as cfutures
 import hashlib
 import json
 import logging
 import pathlib
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, IO, List, Optional
+from typing import Any, Dict, Generator, IO, List, Optional, Union
 
 import bs4
 import requests
 import fake_useragent as ua
 
 from . import utils
-from .exceptions import CacheError
+from .exceptions import MangaNotFoundError, UnknownDomainError
 
 # type hints
 StrList = Optional[List[str]]
@@ -60,6 +61,8 @@ class Metadata:
         if self.genres is not None:
             self.genres = [utils.sanitize(g.strip()) for g in self.genres]
 
+        self.desc = self.desc.strip()
+
     def parsed(self):
         """Check whether the metadata fields has been partially/totally filled."""
         return any(value for key, value in self.__dict__.items() if key != "url")
@@ -88,7 +91,7 @@ class Manga(abc.ABC):
     """A manga hosted somewhere online.
 
     Attributes:
-        chapter_data: A map of chapter id to the Chapter object.
+        data: A map of chapter id to the Chapter object.
         domain: The name of the manga host website, i.e 'mangadex.org'.
             This **must** be set in any derived subclasses like so:
 
@@ -121,14 +124,12 @@ class Manga(abc.ABC):
         if not self.meta.parsed():
             self.meta = self.metadata()
 
-        self.chapter_data: Dict[str, Chapter] = {}
+        self.data: Dict[str, Chapter] = {}
 
         chapters = data.get("chapters")
 
         if chapters is not None:
-            self.chapter_data = {
-                cid: Chapter(**cdata) for cid, cdata in chapters.items()
-            }
+            self.data = {cid: Chapter(**cdata) for cid, cdata in chapters.items()}
 
     @classmethod
     def parser(cls, url: str):
@@ -141,7 +142,7 @@ class Manga(abc.ABC):
             The subclass that can be used to parse the url.
 
         Raises:
-            ValueError, if there is no registered subclass for the url domain.
+            UnknownDomainError, if there is no registered subclass for the url domain.
         """
 
         domain = utils.parse_domain(url)
@@ -149,7 +150,7 @@ class Manga(abc.ABC):
         try:
             subclass = cls.registered[domain]
         except KeyError:
-            raise ValueError(f"no Manga subclass registered for {domain}")
+            raise UnknownDomainError(f"no parser found for domain '{domain}'")
 
         return subclass
 
@@ -202,9 +203,7 @@ class Manga(abc.ABC):
 
         return {
             "metadata": self.meta.__dict__,
-            "chapters": {
-                cid: cdata.__dict__ for cid, cdata in self.chapter_data.items()
-            },
+            "chapters": {cid: cdata.__dict__ for cid, cdata in self.data.items()},
         }
 
     def export_file(self, file: [str, pathlib.Path, IO]):
@@ -223,27 +222,65 @@ class Manga(abc.ABC):
                 Defaults to False (may take up a lot of bandwidth for many chapters).
         """
 
+        self.meta = self.metadata()
+
         for chapter in self.chapters():
 
-            if chapter.id not in self.chapter_data:
+            if chapter.id not in self.data:
 
                 _log.info("adding new chapter %s", chapter.id)
 
-                self.chapter_data[chapter.id] = chapter
+                self.data[chapter.id] = chapter
 
             else:
                 # take the reference to the existing chapter so assigning pages will work properly.
-                chapter = self.chapter_data[chapter.id]
+                chapter = self.data[chapter.id]
 
             if pages and chapter.pages is None:
 
                 _log.info("adding pages to chapter %s", chapter.id)
 
-                self.chapter_data[chapter.id].pages = self.pages(chapter)
+                self.data[chapter.id].pages = self.pages(chapter)
 
     def soup_from_url(self, url: str) -> bs4.BeautifulSoup:
         """Retreive a url and create a soup using its content."""
         return bs4.BeautifulSoup(self.session.get(url).text, BS4_PARSER)
+
+    def download(self, cid: str, to: Union[str, pathlib.Path]) -> List[pathlib.Path]:
+        """Download a chapter's pages to a folder.
+
+        Args:
+            cid: The chapter id to download.
+            to: The folder to download the pages to.
+
+        Returns:
+            A list of absolute paths to the downloaded pages in ascending order
+            (1.png, 2.png, 3.png, etc.)
+        """
+
+        to = pathlib.Path(to)
+
+        paths = []
+
+        chapter = self.data[cid]
+        total = len(chapter.pages)
+
+        with cfutures.ThreadPoolExecutor(max_workers=8) as pool:
+            futures = {
+                pool.submit(self.session.get, url): count
+                for count, url in enumerate(chapter.pages)
+            }
+
+            for future in cfutures.as_completed(futures):
+                count = futures[future]
+
+                _log.info(f"[chapter {chapter.id}] downloading page {count} of {total}")
+
+                resp = future.result()
+                path = utils.save_response(to / str(count), resp)
+                paths.append(path)
+
+        return paths
 
     @abc.abstractmethod
     def metadata(self) -> Metadata:
@@ -333,11 +370,11 @@ class Cache:
             The Manga object.
 
         Raises:
-            CacheError, if the manga does not exist in the cache.
+            MangaNotFoundError, if the manga does not exist in the cache.
         """
         if not self.exists(url):
-            raise CacheError(
-                f"manga {url} does not exist in cache. Did you try to create it? (Use Manga.from_url(url) instead.)"
+            raise MangaNotFoundError(
+                f"{url} does not exist in cache. Did you try to create it? (Use Manga.from_url(url) instead.)"
             )
 
         return Manga.import_file(self.path / f"{self.index[url]}.json")
@@ -358,10 +395,10 @@ class Cache:
             url: The manga url.
 
         Raises:
-            CacheError, if the manga does not exist in the cache.
+            MangaNotFoundError, if the manga does not exist in the cache.
         """
         if not self.exists(url):
-            raise CacheError(f"can't delete non-existant manga {url}")
+            raise MangaNotFoundError(f"can't delete {url}")
 
         hashname = self.index.pop(url)
         (self.path / f"{hashname}.json").unlink()

@@ -19,15 +19,15 @@ requires = [
     "coloredlogs>=14.0",
     "fake-useragent>=0.1.11",
     "filetype>=1.0.7",
+    "fpdf>=1.7.2",
+    "imagesize>=1.2.0",
+    "natsort>=7.1.0",
     "requests>=2.24.0",
 ]
 requires-python = ">=3.6"
 
 [tool.flit.metadata.requires-extra]
-pdf = [
-    "fpdf>=1.7.2",
-    "imagesize>=1.2.0",
-    "natsort>=7.1.0",
+gui = [
 ]
 
 [tool.flit.scripts]

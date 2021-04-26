@@ -11,27 +11,32 @@
 
 ## What?
 
-tankobon is a website scraper for comics and mangas. tankobon relies on **parsers**,
-which define how to parse a website for chapters and chapters for links to the pages themselves.
-(somewhat like youtube-dl extractors.) Currently, the following websites are supported:
+tankobon is (somewhat) like youtube-dl for manga websites: it aims to make creating parsers for manga hosting websites easy.
 
-- `mangabat.com`
-- `mangadex.org`
+(Plus, it and its dependencies are pure Python!)
+
+Currently, the following websites are supported (rip mangadex, hope we'll see you soon):
+
+- `catmanga.org`
 - `mangakakalot.com`
+
+## Usage (CLI)
+
+```bash
+# Add a manga url to the cache (at ~/.tankobon):
+tankobon refresh https://catmanga.org/series/komi
+
+# Then download it (to the current folder)...
+tankobon download https://catmanga.org/series/komi
+
+# ...and pack it into a nice pdf file for use with your favourite e-reader.
+tankobon pdfify -o komi.pdf
+```
 
 ## Todo
 
-- download pre-parsed indexes from a special Github repo (tankobon-index?)
+- tests and docs
 - create GUI to make downloading easier (like youtube-DLG)
-
-## Usage
-
-```bash
-# do 'tankobon parse' if you don't want to download any chapters
-tankobon download 'https://mangadex.org/title/56776/koi-wa-iikara-nemuritai'
-# you can also get info by title
-tankobon info 'https://mangadex.org/title/56776/koi-wa-iikara-nemuritai'
-```
 
 ## Install
 

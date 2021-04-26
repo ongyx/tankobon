@@ -16,22 +16,25 @@ class Manga(core.Manga):
         info = self.soup.find(class_="manga-info-text").find_all("li")
 
         title_tag = info[0]
-        title = title_tag.h1.string
+        title = title_tag.h1.text
 
-        alt_titles_tag = title_tag.h2.string.partition(":")[-1]
+        alt_titles_tag = title_tag.h2.text.partition(":")[-1]
         alt_titles = alt_titles_tag.split(",")
 
-        authors = [a.string for a in info[1].find_all("a")]
+        authors = [a.text for a in info[1].find_all("a")]
 
-        genres = [a.string.lower().replace(" ", "_") for a in info[6].find_all("a")]
+        genres = [a.text.lower().replace(" ", "_") for a in info[6].find_all("a")]
 
-        desc_tag = self.soup.find(id=["panel-story-info-description", "noidungm"])
+        desc_tag = self.soup.find(
+            "div", id=["panel-story-info-description", "noidungm"]
+        )
+
         try:
             desc_tag.p.decompose()
         except AttributeError:
             pass
         finally:
-            desc = desc_tag.string
+            desc = desc_tag.text
 
         cover = self.soup.find("div", class_="manga-info-pic").img["src"]
 
@@ -51,7 +54,7 @@ class Manga(core.Manga):
             if not link:
                 continue
 
-            cid, title = RE_CHAPTER.findall(link.string)[0]
+            cid, title = RE_CHAPTER.findall(link.text)[0]
 
             yield core.Chapter(
                 id=cid,
