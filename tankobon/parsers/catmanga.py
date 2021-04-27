@@ -32,8 +32,7 @@ class Manga(core.Manga):
             data = self.soup.find("script", id="__NEXT_DATA__").string
             self._json = json.loads(data)["props"]["pageProps"]["series"]
 
-        finally:
-            return self._json
+        return self._json
 
     def metadata(self):
         return core.Metadata(

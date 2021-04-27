@@ -228,7 +228,7 @@ class Manga(abc.ABC):
 
             if chapter.id not in self.data:
 
-                _log.info("adding new chapter %s", chapter.id)
+                _log.info("manga: adding new chapter %s", chapter.id)
 
                 self.data[chapter.id] = chapter
 
@@ -238,7 +238,7 @@ class Manga(abc.ABC):
 
             if pages and chapter.pages is None:
 
-                _log.info("adding pages to chapter %s", chapter.id)
+                _log.info("manga: adding pages to chapter %s", chapter.id)
 
                 self.data[chapter.id].pages = self.pages(chapter)
 
@@ -274,7 +274,7 @@ class Manga(abc.ABC):
             for future in cfutures.as_completed(futures):
                 count = futures[future]
 
-                _log.info(f"[chapter {chapter.id}] downloading page {count} of {total}")
+                _log.info(f"manga: [{chapter.id}] downloading page {count} of {total}")
 
                 resp = future.result()
                 path = utils.save_response(to / str(count), resp)
@@ -314,16 +314,16 @@ class Manga(abc.ABC):
     def domain(self) -> str:
         pass
 
-    def __getattr__(self, attr):
-        if attr in self.meta.__dict__:
-            return self.meta.__dict__[attr]
-
-        return object.__getattr__(self, attr)
-
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
         cls.registered[cls.domain] = cls
+
+    def __getattr__(self, attr):
+        try:
+            return self.meta.__dict__[attr]
+        except KeyError:
+            raise AttributeError
 
     def __enter__(self):
         return self
@@ -346,12 +346,19 @@ class Cache:
                 self.index = json.load(f)
 
         except FileNotFoundError:
+            _log.info("cache: index not found, creating")
             self.index = {}
 
     def _hashname(self, manga):
-        return self.index.setdefault(
-            manga.url, hashlib.md5((manga.title + manga.url).encode()).hexdigest()
-        )
+        if manga.url not in self.index:
+            hashname = hashlib.md5((manga.title + manga.url).encode()).hexdigest()
+
+            self.index[manga.url] = hashname
+
+        else:
+            hashname = self.index[manga.url]
+
+        return hashname
 
     def _hashpath(self, manga):
         return self.path / f"{self._hashname(manga)}.json"

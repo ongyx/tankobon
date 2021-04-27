@@ -152,13 +152,16 @@ def refresh(url, pages):
     with core.Cache() as cache:
 
         if not cache.exists(url):
+            click.echo("manga dosen't exist, creating")
             manga = core.Manga.from_url(url)
 
         else:
+            click.echo("loading existing manga")
             manga = cache.load(url)
 
         manga.refresh(pages=pages)
 
+        click.echo("saving changes")
         cache.save(manga)
 
 

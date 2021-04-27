@@ -1,13 +1,11 @@
 # coding: utf8
-"""Utilities for tankobon.
-"""
+"""Utilities for tankobon."""
 
 import logging
 import pathlib
 import re
 from typing import Optional, Union
 from urllib.parse import urlparse
-
 
 import bs4  # type: ignore
 import filetype  # type: ignore
