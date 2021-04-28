@@ -11,7 +11,11 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QSplashScreen,
+    QSplitter,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -22,6 +26,24 @@ _app = QApplication([])
 
 MAX_COL = 5
 LOGO = QPixmap("logo.jpg")
+NO_MANGA = QLabel("Select a manga from the side bar, or add a new one.")
+NO_MANGA.setAlignment(Qt.AlignCenter)
+
+
+class MangaItem(QListWidgetItem):
+    def __init__(self, metadata: dict):
+        self.meta = core.Metadata(**metadata)
+        super().__init__(self.meta.title)
+
+        self.setToolTip(", ".join(self.meta.alt_titles))
+
+
+class MangaItemDisplay(QWidget):
+    def __init__(self, metadata: dict):
+        self.meta = core.Metadata(**metadata)
+        super().__init__()
+
+        self.layout = QGridLayout(self)
 
 
 class Root(QMainWindow):
@@ -37,50 +59,29 @@ class Root(QMainWindow):
         file_quit.triggered.connect(_app.quit)
         file_menu.addAction(file_quit)
 
+        manga_list = QListWidget()
+
         # actual tankobon api
         self.cache = core.Cache()
 
-        # we show manga in a grid layout
-        grid_widget = QWidget(self)
-        self.grid = QGridLayout(grid_widget)
+        for _, metadata in self.cache.index.items():
+            manga_list.addItem(MangaItem(metadata))
 
-        self.row = 0
-        self.col = 0
+        manga_list.itemClicked.connect(self.selectedManga)
+        manga_list.setMaximumWidth(manga_list.sizeHintForColumn(0) + 5)
 
-        # cache metadata of all manga in cache
-        self.metacache = {}
-        for url in self.cache.index:
-            manga = self.cache.load(url)
-            self.metacache[manga.url] = manga.meta
+        self.manga_view = QSplitter()
 
-            self.addPreview(manga)
+        self.manga_view.addWidget(manga_list)
+        self.manga_view.addWidget(NO_MANGA)
 
-        self.setCentralWidget(grid_widget)
+        self.manga_view.setCollapsible(0, False)
 
-    def addPreview(self, manga: core.Manga):
-        manga_path = (self.cache.path / self.cache._hashpath(manga)).with_suffix("")
-        manga_path.mkdir(exist_ok=True)
+        wrapper = QWidget(self)
+        self.layout = QVBoxLayout(wrapper)
+        self.layout.addWidget(self.manga_view)
 
-        label = QLabel(manga.title, self)
-
-        try:
-            # the cover may not be a jpg or a png, so just ignore extension
-            cover_path = manga_path / next(manga_path.glob("cover.*"))
-
-        except StopIteration:
-            # cover does not exist, don't show
-            pass
-
-        else:
-            cover = QPixmap(str(cover_path))
-            # cover = cover.scaled(label.size(), Qt.KeepAspectRatio)
-
-            label.setPixmap(cover)
-
-        if self.col >= 5:
-            self.col = 0
-
-        self.grid.addWidget(label, self.row, self.col)
+        self.setCentralWidget(wrapper)
 
     def confirmQuit(self):
         reply = QMessageBox.question(
@@ -97,6 +98,16 @@ class Root(QMainWindow):
         else:
             event.ignore()
 
+    def selectedManga(self, manga_item):
+        prev_widget = self.manga_view.widget(self.manga_view.count() - 1)
+        prev_widget.hide()
+        prev_widget.deleteLater()
+
+        desc = QLabel(manga_item.meta.desc)
+        desc.setWordWrap(True)
+
+        self.manga_view.addWidget(desc)
+
 
 class LoadingSplash(QSplashScreen):
     def showMessage(self, message):
@@ -109,15 +120,19 @@ class LoadingSplash(QSplashScreen):
 
 if __name__ == "__main__":
 
-    splash = LoadingSplash(LOGO)
-    splash.show()
+    # splash = LoadingSplash(LOGO)
+    # splash.show()
 
-    splash.showMessage("Loading manga metadata...")
+    # splash.showMessage("Loading manga metadata...")
 
     window = Root()
 
+    # splash.showMessage("This splash screen is nice, right?")
+
+    # time.sleep(2.5)
+
     window.show()
-    splash.finish(window)
+    # splash.finish(window)
 
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
