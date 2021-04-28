@@ -21,6 +21,7 @@ from .__version__ import __version__
 _app = QApplication([])
 
 MAX_COL = 5
+LOGO = QPixmap("logo.jpg")
 
 
 class Root(QMainWindow):
@@ -29,6 +30,7 @@ class Root(QMainWindow):
 
         # gui setup
         self.setWindowTitle("tankobon")
+        self.setWindowIcon(LOGO)
 
         file_menu = self.menuBar().addMenu("File")
         file_quit = QAction("Quit", self)
@@ -107,8 +109,7 @@ class LoadingSplash(QSplashScreen):
 
 if __name__ == "__main__":
 
-    logo = QPixmap("logo.jpg")
-    splash = LoadingSplash(logo)
+    splash = LoadingSplash(LOGO)
     splash.show()
 
     splash.showMessage("Loading manga metadata...")

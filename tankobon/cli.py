@@ -12,7 +12,7 @@ import coloredlogs  # type: ignore
 try:
     import fpdf
     import imagesize
-    import natsort
+    from natsort import natsorted
 except ImportError:
     fpdf = None
     imagesize = None
@@ -133,7 +133,8 @@ def _list():
             click.echo("(none)")
 
         else:
-            _pprint(cache.index)
+            for url, metadata in cache.index.items():
+                print(f"{url}: {metadata['title']} ({metadata['_hash']})")
 
 
 @cli.command()
@@ -151,7 +152,7 @@ def refresh(url, pages):
 
     with core.Cache() as cache:
 
-        if not cache.exists(url):
+        if url not in cache.index:
             click.echo("manga dosen't exist, creating")
             manga = core.Manga.from_url(url)
 
@@ -223,8 +224,15 @@ def download(url, path, chapters, force):
             chapter_path = path / cid
             chapter_path.mkdir(exist_ok=True)
 
-            images = manga.download(cid, chapter_path)
-            manifest[cid] = natsort.natsorted(
+            try:
+                images = manga.download(cid, chapter_path)
+            except core.PagesNotFoundError:
+                click.echo(
+                    f"Pages for chapter {cid} not found. Try running 'tankobon refresh -p {url}' first."
+                )
+                raise click.Abort()
+
+            manifest[cid] = natsorted(
                 [str(i.relative_to(chapter_path)) for i in images]
             )
 
@@ -266,16 +274,15 @@ def pdfify(path, chapters, output):
         chapters = list(manifest.keys())
     else:
         chapters = chapters.split(",")
-    chapters = natsort.natsorted(chapters)
 
     document = fpdf.FPDF()
 
-    for cid in chapters:
+    for cid in natsorted(chapters):
         click.echo(f"adding chapter {cid}")
 
         chapter = manifest[cid]
         total = len(chapter) - 1
-        for page in chapter:
+        for page in natsorted(chapter):
             click.echo(f"adding page {page} of {total}")
             page_path = path / cid / page
 

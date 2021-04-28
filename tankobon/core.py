@@ -4,19 +4,24 @@ from __future__ import annotations
 
 import abc
 import concurrent.futures as cfutures
+import functools
 import hashlib
 import json
 import logging
 import pathlib
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, IO, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import bs4
 import requests
 import fake_useragent as ua
 
 from . import utils
-from .exceptions import MangaNotFoundError, UnknownDomainError
+from .exceptions import MangaNotFoundError, PagesNotFoundError, UnknownDomainError
+
+# monkey-patch json for indent
+json.dump = functools.partial(json.dump, indent=4)
+json.dumps = functools.partial(json.dumps, indent=4)
 
 # type hints
 StrList = Optional[List[str]]
@@ -27,7 +32,14 @@ BS4_PARSER = "html5lib"
 USER_AGENT = ua.UserAgent()
 
 CACHE_PATH = pathlib.Path.home() / ".tankobon"
-INDEX_PATH = "index.json"
+
+# index at the root of the cache
+INDEX_FILE = "index.json"
+
+# Each manga has a unique hash name generated using MD5
+# (see Metadata.hash).
+# This hash name is used to create a per-manga directory (to store this file and the manga pages).
+CHAPTER_FILE = "chapters.json"
 
 
 @dataclass
@@ -57,6 +69,8 @@ class Metadata:
     desc: str = ""
     cover: str = ""
 
+    _hash: str = ""
+
     def __post_init__(self):
         if self.genres is not None:
             self.genres = [utils.sanitize(g.strip()) for g in self.genres]
@@ -66,6 +80,13 @@ class Metadata:
     def parsed(self):
         """Check whether the metadata fields has been partially/totally filled."""
         return any(value for key, value in self.__dict__.items() if key != "url")
+
+    @property
+    def hash(self):
+        if not self._hash:
+            self._hash = hashlib.md5((self.title + self.url).encode()).hexdigest()
+
+        return self._hash
 
 
 @dataclass
@@ -99,6 +120,8 @@ class Manga(abc.ABC):
                 domain = 'mymanga.com'
                 ...
 
+        hash: A MD5 checksum of the manga title + url.
+            This can be used to uniquely identify manga.
         meta: The manga metadata as a Metadata object.
         registered: A map of subclass domain to the subclass itself.
             Subclasses can then be delegated to depending on a url's domain.
@@ -179,16 +202,6 @@ class Manga(abc.ABC):
         subclass = cls.parser(data["metadata"]["url"])
         return subclass(data)
 
-    @classmethod
-    def import_file(cls, file: [str, pathlib.Path, IO]) -> Manga:
-        """Import manga data from a file."""
-
-        if isinstance(file, (str, pathlib.Path)):
-            file = open(file, "r")
-
-        data = json.load(file)
-        return cls.import_dict(data)
-
     def close(self):
         self.session.close()
         self.soup.decompose()
@@ -205,14 +218,6 @@ class Manga(abc.ABC):
             "metadata": self.meta.__dict__,
             "chapters": {cid: cdata.__dict__ for cid, cdata in self.data.items()},
         }
-
-    def export_file(self, file: [str, pathlib.Path, IO]):
-        """Export the manga data to a file."""
-
-        if isinstance(file, (str, pathlib.Path)):
-            file = open(file, "w")
-
-        json.dump(self.export_dict(), file, indent=4)
 
     def refresh(self, pages: bool = False):
         """Refresh the list of chapters available.
@@ -256,6 +261,10 @@ class Manga(abc.ABC):
         Returns:
             A list of absolute paths to the downloaded pages in ascending order
             (1.png, 2.png, 3.png, etc.)
+
+        Raises:
+            PagesNotFoundError, if the chapter's pages have not been parsed yet.
+            To avoid this, .pages(refresh=True) should be called at least once.
         """
 
         to = pathlib.Path(to)
@@ -263,6 +272,12 @@ class Manga(abc.ABC):
         paths = []
 
         chapter = self.data[cid]
+
+        if chapter.pages is None:
+            raise PagesNotFoundError(
+                f"chapter {cid} has no pages (did you forget to call .refresh(pages=True)?)"
+            )
+
         total = len(chapter.pages)
 
         with cfutures.ThreadPoolExecutor(max_workers=8) as pool:
@@ -337,10 +352,9 @@ class Cache:
         self.path = path
         self.path.mkdir(exist_ok=True)
 
-        self.index_path = self.path / INDEX_PATH
+        self.index_path = self.path / INDEX_FILE
 
-        # The index maps manga urls to their hashnames (used as filenames).
-        # The hashname only has to be calculated once.
+        # The index maps manga urls to their metadata.
         try:
             with self.index_path.open() as f:
                 self.index = json.load(f)
@@ -349,25 +363,38 @@ class Cache:
             _log.info("cache: index not found, creating")
             self.index = {}
 
-    def _hashname(self, manga):
-        if manga.url not in self.index:
-            hashname = hashlib.md5((manga.title + manga.url).encode()).hexdigest()
+    def _hash_name(self, url):
+        return self.index[url]["_hash"]
 
-            self.index[manga.url] = hashname
+    def _hash_path(self, url):
+        return self.path / self._hash_name(url)
 
-        else:
-            hashname = self.index[manga.url]
+    def save(self, manga: Manga):
+        """Save this manga within the cache.
 
-        return hashname
+        Args:
+            manga: The manga object to save.
+        """
 
-    def _hashpath(self, manga):
-        return self.path / f"{self._hashname(manga)}.json"
+        # make sure hash is generated
+        manga.meta.hash
 
-    def exists(self, url: str) -> bool:
-        """Check whether the manga url is in the cache."""
-        return url in self.index
+        export = manga.export_dict()
 
-    def load(self, url: str) -> Manga:
+        metadata = export["metadata"]
+        chapters = export["chapters"]
+
+        # Save only metadata in the index for faster loading.
+        # Chapters are saved in another json file.
+        self.index[manga.url] = metadata
+
+        manga_path = self._hash_path(manga.url)
+        manga_path.mkdir(exist_ok=True)
+
+        with (manga_path / CHAPTER_FILE).open("w") as f:
+            json.dump(chapters, f)
+
+    def load(self, url: str):
         """Load a manga by url.
 
         Args:
@@ -379,21 +406,15 @@ class Cache:
         Raises:
             MangaNotFoundError, if the manga does not exist in the cache.
         """
-        if not self.exists(url):
+        if url not in self.index:
             raise MangaNotFoundError(
                 f"{url} does not exist in cache. Did you try to create it? (Use Manga.from_url(url) instead.)"
             )
 
-        return Manga.import_file(self.path / f"{self.index[url]}.json")
+        with (self._hash_path(url) / CHAPTER_FILE).open() as f:
+            chapters = json.load(f)
 
-    def save(self, manga: Manga):
-        """Save a manga to the cache.
-
-        Args:
-            manga: The manga to save.
-        """
-        # so we don't have to use a sanitised filename, which may collide.
-        manga.export_file(self._hashpath(manga))
+        return Manga.import_dict({"metadata": self.index[url], "chapters": chapters})
 
     def delete(self, url: str):
         """Delete a manga from the cache.
@@ -404,11 +425,11 @@ class Cache:
         Raises:
             MangaNotFoundError, if the manga does not exist in the cache.
         """
-        if not self.exists(url):
+        if url not in self.index:
             raise MangaNotFoundError(f"can't delete {url}")
 
-        hashname = self.index.pop(url)
-        (self.path / f"{hashname}.json").unlink()
+        (self._hash_path(url) / CHAPTER_FILE).unlink()
+        del self.index[url]
 
     def close(self):
         with self.index_path.open("w") as f:
