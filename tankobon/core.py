@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import pathlib
+import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, Generator, List, Optional, Union
 
@@ -297,6 +298,23 @@ class Manga(abc.ABC):
 
         return paths
 
+    def download_cover(self) -> requests.Response:
+        """Download the manga cover.
+        The manga cover url must be valid.
+
+        Returns:
+            The requests.Response of the manga cover url.
+        """
+
+        return self.session.get(self.meta.cover)
+
+    def total(self) -> int:
+        """Return the total number of pages in this manga.
+        All the chapter pages must have already been parsed.
+        """
+
+        return sum(len(c.pages) for c in self.data.values())
+
     @abc.abstractmethod
     def metadata(self) -> Metadata:
         """Parse metadata from the manga title page.
@@ -369,11 +387,13 @@ class Cache:
     def _hash_path(self, url):
         return self.path / self._hash_name(url)
 
-    def save(self, manga: Manga):
+    def save(self, manga: Manga, cover: bool = False):
         """Save this manga within the cache.
 
         Args:
             manga: The manga object to save.
+            cover: Whether or not to save the cover to the cache (if the cover url exists).
+                Defaults to False.
         """
 
         # make sure hash is generated
@@ -393,6 +413,9 @@ class Cache:
 
         with (manga_path / CHAPTER_FILE).open("w") as f:
             json.dump(chapters, f)
+
+        if cover and manga.meta.cover:
+            utils.save_response(manga_path / "cover", manga.download_cover())
 
     def load(self, url: str):
         """Load a manga by url.
@@ -428,7 +451,7 @@ class Cache:
         if url not in self.index:
             raise MangaNotFoundError(f"can't delete {url}")
 
-        (self._hash_path(url) / CHAPTER_FILE).unlink()
+        shutil.rmtree(self._hash_path(url))
         del self.index[url]
 
     def close(self):

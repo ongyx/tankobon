@@ -46,7 +46,7 @@ class Manga(core.Manga):
             cid = str(cdata["number"])
 
             yield core.Chapter(
-                id=cid, url=f"{self.meta.url}/{cid}", title=cdata["title"]
+                id=cid, url=f"{self.meta.url}/{cid}", title=cdata.get("title") or ""
             )
 
     def pages(self, chapter):
