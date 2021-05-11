@@ -1,5 +1,6 @@
 # coding: utf8
 
+import pathlib
 import signal
 import sys
 import traceback
@@ -8,7 +9,9 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QDialogButtonBox,
+    QFileDialog,
     QHBoxLayout,
     QInputDialog,
     QMainWindow,
@@ -17,6 +20,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QScrollArea,
     QSizePolicy,
     QSplashScreen,
     QSplitter,
@@ -26,26 +30,34 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import core, parsers  # noqa: F401
+from . import core, parsers, resources  # noqa: F401
 from .__version__ import __version__
 
 _app = QApplication([])
 QStyle = _app.style()
 
+LOGO = resources.pixmap("logo")
+
+HOME = pathlib.Path.home()
 CACHE = core.Cache()
 
 MAX_COL = 5
-LOGO = QPixmap("logo.jpg")
 
-
-T_CREATE = "Add Manga"
+T_CREATE = "Create Manga"
 T_DELETE = "Delete Manga"
-T_REFRESH = "Refresh Manga"
 
 
 def delete(widget):
     widget.hide()
     widget.deleteLater()
+
+
+class SpinningCursor:
+    def __enter__(self):
+        _app.setOverrideCursor(Qt.WaitCursor)
+
+    def __exit__(self, t, v, tb):
+        _app.restoreOverrideCursor()
 
 
 # A message box without the window icon.
@@ -126,11 +138,17 @@ class ItemView(QWidget):
 
         self.layout = QHBoxLayout(self)
 
-        # load cover
-        cover_path = next(CACHE._hash_path(self.item.meta.url).glob("cover.*"))
-
         self.cover = QPixmap()
-        self.cover.load(str(cover_path))
+
+        # load cover
+        try:
+            cover_path = next(CACHE._hash_path(self.item.meta.url).glob("cover.*"))
+
+        except StopIteration:
+            self.cover = resources.pixmap("missing")
+
+        else:
+            self.cover.load(str(cover_path))
 
         self.label = QLabel()
         self.resizeCover()
@@ -173,6 +191,21 @@ class ItemList(QListWidget):
 MANGA_ITEMS = ItemList()
 
 
+class ChaptersView(QScrollArea):
+    def __init__(self, manga: core.Manga):
+        super().__init__()
+        self.manga = manga
+
+        self.container = QWidget()
+        self.setWidget(self.container)
+
+        self.layout = QVBoxLayout(self.container)
+
+        for cid in self.manga.data.keys():
+            checkbox = QCheckBox(cid)
+            self.layout.addWidget(checkbox)
+
+
 # Toolbar at the bottom of the window.
 # This shows a bunch of buttons to manage manga items (add, remove, etc.)
 class ToolBar(QToolBar):
@@ -194,6 +227,11 @@ class ToolBar(QToolBar):
             "method": "refresh",
             "tooltip": "Refresh the selected manga...",
             "icon": QStyle.SP_BrowserReload,
+        },
+        {
+            "method": "download",
+            "tooltip": "Download the selected manga...",
+            "icon": QStyle.SP_DialogSaveButton,
         },
     ]
 
@@ -245,6 +283,16 @@ class ToolBar(QToolBar):
     def onDeletedManga(self):
         self.summary.setText("")
 
+    def ensureSelected(self, method):
+        if self.selected is None:
+            MessageBox.info(
+                f"{method.capitalize()} Manga",
+                f"Please select a manga to {method} first.",
+            )
+            return False
+
+        return True
+
     def create(self):
         dialog = RequiredDialog()
         dialog.setWindowTitle(T_CREATE)
@@ -273,14 +321,9 @@ class ToolBar(QToolBar):
             )
             return
 
-        try:
-            _app.setOverrideCursor(Qt.WaitCursor)
-
+        with SpinningCursor():
             manga.refresh(pages=True)
             CACHE.save(manga, cover=True)
-
-        finally:
-            _app.restoreOverrideCursor()
 
         # add to item list
         MANGA_ITEMS.addItem(Item(manga.meta.__dict__))
@@ -288,8 +331,7 @@ class ToolBar(QToolBar):
         QApplication.processEvents()
 
     def delete(self):
-        if self.selected is None:
-            MessageBox.info(T_DELETE, "Please select a manga to delete first.")
+        if not self.ensureSelected("delete"):
             return
 
         reply = MessageBox.ask(
@@ -305,19 +347,29 @@ class ToolBar(QToolBar):
             self.deletedManga.emit()
 
     def refresh(self):
-        if self.selected is None:
-            MessageBox.info(T_REFRESH, "Please select a manga to refresh first.")
+        if not self.ensureSelected("refresh"):
             return
 
-        try:
-            _app.setOverrideCursor(Qt.WaitCursor)
-
+        with SpinningCursor():
             manga = CACHE.load(self.selected.meta.url)
             manga.refresh(pages=True)
             CACHE.save(manga)
 
-        finally:
-            _app.restoreOverrideCursor()
+    def download(self):
+        """
+        if not self.ensureSelected("download"):
+            return
+
+        manga = CACHE.load(self.selected.meta.url)
+
+        # ask which chapters to download
+        chapters_view = ChaptersView(manga)
+        chapters_view.show()
+
+        download_path = QFileDialog.getExistingDirectory(
+            self, "Choose a folder to download to.", str(HOME)
+        )
+        """
 
 
 # Toolbar at the top of the window.

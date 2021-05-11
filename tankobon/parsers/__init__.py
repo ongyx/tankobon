@@ -6,9 +6,9 @@ Parsers *must* subclass and satisfy the tankobon.manga.Manga interface.
 
 Typically, parsers make heavy use of regexes and leverage the BeautifulSoup API through the .soup attribute:
 
->>> from tankobon import manga
+>>> from tankobon import core
 >>>
->>> class MyManga(manga.Manga):
+>>> class MyManga(core.Manga):
 ...
 ...     # The domain of the website you are going to parse, *without* a 'www' in front.
 ...     domain = "my-website.com"

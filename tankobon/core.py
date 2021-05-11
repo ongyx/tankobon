@@ -1,4 +1,5 @@
 # coding: utf8
+"""Core functionality of tankobon."""
 
 from __future__ import annotations
 
@@ -313,7 +314,9 @@ class Manga(abc.ABC):
         All the chapter pages must have already been parsed.
         """
 
-        return sum(len(c.pages) for c in self.data.values())
+        return sum(
+            len(c.pages) if c.pages is not None else 0 for c in self.data.values()
+        )
 
     @abc.abstractmethod
     def metadata(self) -> Metadata:

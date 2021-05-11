@@ -1,6 +1,6 @@
 # tankobon
 
-![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/logo.jpg "tankobon")
+![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/resources/logo.jpg "tankobon")
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tankobon)](https://pypi.org/project/tankobon)
@@ -20,6 +20,10 @@ Currently, the following websites are supported (rip mangadex, hope we'll see yo
 - `catmanga.org`
 - `mangakakalot.com`
 
+## API Docs
+
+See [here](API.md).
+
 ## Usage (CLI)
 
 ```bash
@@ -35,8 +39,8 @@ tankobon pdfify -o komi.pdf
 
 ## Todo
 
-- tests and docs
-- create GUI to make downloading easier (like youtube-DLG)
+- [ ] tests and docs (docs done)
+- [ ] create GUI to make downloading easier, like youtube-DLG (can view manga info, but no downloads yet)
 
 ## Install
 
