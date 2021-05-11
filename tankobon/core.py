@@ -34,6 +34,7 @@ BS4_PARSER = "html5lib"
 USER_AGENT = ua.UserAgent()
 
 CACHE_PATH = pathlib.Path.home() / ".tankobon"
+CACHE_PATH.mkdir(exist_ok=True)
 
 # index at the root of the cache
 INDEX_FILE = "index.json"

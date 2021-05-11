@@ -10,6 +10,8 @@ from PySide6.QtGui import QPixmap
 from . import core
 
 PATH = core.CACHE_PATH / "resources"
+PATH.mkdir(exist_ok=True)
+
 FLAG = PATH / ".downloaded"
 URL = "https://raw.githubusercontent.com/ongyx/tankobon/master/resources.zip"
 
@@ -18,8 +20,6 @@ PIXMAPS = {"logo": "logo.jpg", "missing": "missing.jpg"}
 
 
 def _init():
-    PATH.mkdir(exist_ok=True)
-
     if not FLAG.exists():
         with requests.get(URL) as resp:
             buf = io.BytesIO(resp.content)
