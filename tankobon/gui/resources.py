@@ -7,7 +7,7 @@ import zipfile
 import requests
 from PySide6.QtGui import QPixmap
 
-from . import core
+from .. import core
 
 PATH = core.CACHE_PATH / "resources"
 PATH.mkdir(exist_ok=True)

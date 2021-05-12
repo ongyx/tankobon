@@ -22,8 +22,8 @@ from . import utils
 from .exceptions import MangaNotFoundError, PagesNotFoundError, UnknownDomainError
 
 # monkey-patch json for indent
-json.dump = functools.partial(json.dump, indent=4)
-json.dumps = functools.partial(json.dumps, indent=4)
+json.dump = functools.partial(json.dump, indent=2)
+json.dumps = functools.partial(json.dumps, indent=2)
 
 # type hints
 StrList = Optional[List[str]]

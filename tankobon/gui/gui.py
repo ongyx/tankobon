@@ -11,8 +11,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialogButtonBox,
-    QFileDialog,
-    QHBoxLayout,
     QInputDialog,
     QMainWindow,
     QMessageBox,
@@ -24,14 +22,17 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QSplashScreen,
     QSplitter,
+    QTextEdit,
     QToolBar,
     QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
-from . import core, parsers, resources  # noqa: F401
-from .__version__ import __version__
+from .. import core, parsers  # noqa: F401
+from . import resources, template
+
+from ..__version__ import __version__
 
 _app = QApplication([])
 QStyle = _app.style()
@@ -127,16 +128,16 @@ class Item(QListWidgetItem):
         self.meta = core.Metadata(**metadata)
         super().__init__(self.meta.title)
 
-        self.setToolTip(", ".join(self.meta.alt_titles))
+        # self.setToolTip(", ".join(self.meta.alt_titles))
 
 
 # A preview of the manga infomation (title, author, etc.)
-class ItemView(QWidget):
+class ItemView(QTextEdit):
     def __init__(self, item: Item):
         super().__init__()
         self.item = item
 
-        self.layout = QHBoxLayout(self)
+        self.setReadOnly(True)
 
         self.cover = QPixmap()
 
@@ -150,24 +151,23 @@ class ItemView(QWidget):
         else:
             self.cover.load(str(cover_path))
 
-        self.label = QLabel()
-        self.resizeCover()
+        width = self.width() / 2
+        height = self.height()
 
-        self.layout.addWidget(self.label)
-
-        desc = QLabel(self.item.meta.desc)
-        desc.setWordWrap(True)
-
-        self.layout.addWidget(desc)
-
-    def resizeCover(self):
         self.cover = self.cover.scaled(
-            int(self.width() / 2),
-            self.height(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation,
+            width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
-        self.label.setPixmap(self.cover)
+
+        document = self.document()
+
+        document.addResource(document.ImageResource, "image://cover", self.cover)
+
+        html_data = template.create_html(self.item.meta)
+        # scale cover properly
+        html_data = html_data.replace('width="auto"', f'width="{width}"')
+
+        document.setDefaultStyleSheet(template._CSS)
+        self.setHtml(html_data)
 
 
 # A list of manga items in the sidebar.
@@ -474,8 +474,7 @@ class LoadingSplash(QSplashScreen):
         )
 
 
-if __name__ == "__main__":
-
+def main():
     splash = LoadingSplash(LOGO)
     splash.show()
 

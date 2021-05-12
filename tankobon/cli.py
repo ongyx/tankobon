@@ -18,6 +18,7 @@ except ImportError:
     imagesize = None
     natsort = None
 
+
 from . import __version__, core, parsers  # noqa: F401
 from .exceptions import MangaNotFoundError
 
@@ -293,3 +294,20 @@ def pdfify(path, chapters, output):
             document.image(str(page_path), 0, 0, w=width * ratio, h=height * ratio)
 
     document.output(str(path / output), "F")
+
+
+@cli.command("gui")
+def _gui():
+    """Start the tankobon GUI."""
+
+    try:
+        from .gui import gui
+
+    except ImportError:
+        click.echo(
+            "GUI extension not installed, install with 'pip install tankobon[gui]'."
+        )
+        raise click.Abort()
+
+    else:
+        gui.main()
