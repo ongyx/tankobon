@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialogButtonBox,
+    QGridLayout,
     QInputDialog,
     QMainWindow,
     QMessageBox,
@@ -30,7 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import core, parsers  # noqa: F401
-from . import resources, template
+from . import resources
 
 from ..__version__ import __version__
 
@@ -48,6 +49,19 @@ T_CREATE = "Create Manga"
 T_DELETE = "Delete Manga"
 
 
+def _is_ascii(s):
+    try:
+        s.encode(encoding="utf8").decode("ascii")
+    except UnicodeDecodeError:
+        return False
+    else:
+        return True
+
+
+def _normalize(s):
+    return s.replace("_", " ").capitalize()
+
+
 def delete(widget):
     widget.hide()
     widget.deleteLater()
@@ -59,6 +73,15 @@ class SpinningCursor:
 
     def __exit__(self, t, v, tb):
         _app.restoreOverrideCursor()
+
+
+class TitleLabel(QLabel):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.setTextFormat(Qt.RichText)
+        self.setAlignment(Qt.AlignCenter)
+        self.setStyleSheet("background-color:#CCCCFF;")
+        self.setWordWrap(True)
 
 
 # A message box without the window icon.
@@ -132,42 +155,81 @@ class Item(QListWidgetItem):
 
 
 # A preview of the manga infomation (title, author, etc.)
-class ItemView(QTextEdit):
+class ItemView(QWidget):
     def __init__(self, item: Item):
         super().__init__()
-        self.item = item
+        self.layout = QGridLayout(self)
+        self.layout.setSizeConstraint(self.layout.SetMinAndMaxSize)
 
-        self.setReadOnly(True)
+        meta = item.meta
 
-        self.cover = QPixmap()
+        # infobox spans one row and two columns.
+        SPAN = (1, 2)
 
-        # load cover
+        textedit = QTextEdit()
+        textedit.setReadOnly(True)
+        textedit.setHtml("<h1>Hello World!</h1><small>weeb</small>")
+        # stretch to bottom left
+        self.layout.addWidget(textedit, 0, 0, -1, 1)
+
+        # wikipedia-style info box at the side
+        title = TitleLabel(f"<h2><i>{meta.title}</i></h2>")
+        self.layout.addWidget(title, 0, 1, *SPAN)
+
+        cover = QPixmap()
         try:
-            cover_path = next(CACHE._hash_path(self.item.meta.url).glob("cover.*"))
+            cover_path = next(CACHE._hash_path(meta.url).glob("cover.*"))
 
         except StopIteration:
-            self.cover = resources.pixmap("missing")
+            cover = resources.pixmap("missing")
 
         else:
-            self.cover.load(str(cover_path))
+            cover.load(str(cover_path))
 
-        width = self.width() / 2
-        height = self.height()
-
-        self.cover = self.cover.scaled(
-            width, height, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        # scale cover
+        self.cover = cover.scaled(
+            self.width(),
+            self.height(),
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation,
         )
+        self.cover_label = QLabel()
+        self.cover_label.setPixmap(self.cover)
+        self.resizeCover()
+        self.layout.addWidget(self.cover_label, 1, 1, *SPAN)
 
-        document = self.document()
+        _alt_titles = "<br>".join(
+            f"<i>{t}</i>" if _is_ascii(t) else t for t in meta.alt_titles
+        )
+        alt_titles = TitleLabel(_alt_titles)
+        alt_titles.setStyleSheet("background-color:#DDDDFF;")
+        self.layout.addWidget(alt_titles, 2, 1, *SPAN)
 
-        document.addResource(document.ImageResource, "image://cover", self.cover)
+        genre_header = QLabel("<b>Genre</b>")
+        genre_header.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.layout.addWidget(genre_header, 3, 1)
 
-        html_data = template.create_html(self.item.meta)
-        # scale cover properly
-        html_data = html_data.replace('width="auto"', f'width="{width}"')
+        genre = QLabel("<br>".join(_normalize(g) for g in meta.genres))
+        self.layout.addWidget(genre, 3, 2)
 
-        document.setDefaultStyleSheet(template._CSS)
-        self.setHtml(html_data)
+        manga_header = TitleLabel("<b>Manga</b>")
+        self.layout.addWidget(manga_header, 4, 1, *SPAN)
+
+        author_header = QLabel("<b>Authored by</b>")
+        author_header.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.layout.addWidget(author_header, 5, 1)
+
+        author = QLabel("<br>".join(a for a in meta.authors))
+        self.layout.addWidget(author, 5, 2)
+
+    def resizeCover(self):
+        self.cover = self.cover.scaled(
+            int(self.width() / 2),
+            self.height(),
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation,
+        )
+        self.cover_label.setPixmap(self.cover)
 
 
 # A list of manga items in the sidebar.
@@ -415,8 +477,11 @@ class View(QSplitter):
     def onSelectedManga(self, manga_item):
         self.deleteLast()
 
+        scroll = QScrollArea()
         item_view = ItemView(manga_item)
-        self.addWidget(item_view)
+        scroll.setWidget(item_view)
+
+        self.addWidget(scroll)
 
     def onDeletedManga(self):
         self.deleteLast()

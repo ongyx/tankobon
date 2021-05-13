@@ -12,7 +12,7 @@ RE_TAG = re.compile(r"<(\w+)(.*?)>")
 RE_TAG_ATTR = re.compile(r"(\w+)=\"(.*?)\"")
 
 _CSS = """
-table {
+#infobox {
     bgcolor:#f8f9fa;
     border:#a2a9b1;
 }
@@ -25,10 +25,12 @@ table {
 """
 
 _TEMPLATE = """
+<p float="left">
 <h2>Description</h2>
 $desc
+</p>
 
-<table align="right" float="right" width="auto">
+<table id="infobox" align="right" float="right" margin-left="50%" width="auto">
 
     <tr>
         <td id="header" bgcolor="#CCF"><h2><i>$title</i></h2></td>
