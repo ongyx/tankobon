@@ -63,28 +63,35 @@ def _pprint(_dict):
         click.echo(f"{key}: {value}\n")
 
 
-def _info(manga):
-
-    _pprint(manga.meta.__dict__)
+def _info_table(manga):
+    table = []
 
     volumes = collections.defaultdict(list)
 
     for _, chapter in manga.data.items():
         volumes[chapter.volume].append(chapter)
 
-    click.echo("| volume | chapter | title ")
-    click.echo("|--------|---------|-------")
+    table.append("| volume | chapter | title ")
+    table.append("|--------|---------|-------")
 
     for volume, chapters in volumes.items():
         for chapter in chapters:
-            click.echo(
+            table.append(
                 "| {:<6} | {:<7} | {}".format(
                     volume, chapter.id, chapter.title or "(empty)"
                 )
             )
 
-    n_vol = len(volumes)
-    n_chapter = len(manga.data)
+    return "\n".join(table), len(volumes), len(manga.data)
+
+
+def _info(manga):
+
+    _pprint(manga.meta.__dict__)
+
+    table, n_vol, n_chapter = _info_table(manga)
+
+    click.echo(table)
 
     click.echo(
         f"summary: {n_vol} volume{'s' if n_vol > 1 else ''}, {n_chapter} chapter{'s' if n_chapter > 1 else ''}"
