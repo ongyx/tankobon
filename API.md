@@ -10,6 +10,7 @@
     * [import\_dict](#tankobon.core.Manga.import_dict)
     * [export\_dict](#tankobon.core.Manga.export_dict)
     * [refresh](#tankobon.core.Manga.refresh)
+    * [select](#tankobon.core.Manga.select)
     * [soup\_from\_url](#tankobon.core.Manga.soup_from_url)
     * [download](#tankobon.core.Manga.download)
     * [download\_cover](#tankobon.core.Manga.download_cover)
@@ -197,6 +198,26 @@ Refresh the list of chapters available.
 - `pages` - Whether or not to parse the pages for any new chapters.
   Defaults to False (may take up a lot of bandwidth for many chapters).
 
+<a name="tankobon.core.Manga.select"></a>
+#### select
+
+```python
+ | select(start: str, end: str) -> List[str]
+```
+
+Select chapter ids from the start id to the end id.
+The ids are sorted first.
+
+**Arguments**:
+
+- `start` - The start chapter id.
+- `end` - The end chapter id.
+  
+
+**Returns**:
+
+  A list of all chapter ids between start and end (inclusive of start and end).
+
 <a name="tankobon.core.Manga.soup_from_url"></a>
 #### soup\_from\_url
 
@@ -210,7 +231,7 @@ Retreive a url and create a soup using its content.
 #### download
 
 ```python
- | download(cid: str, to: Union[str, pathlib.Path]) -> List[pathlib.Path]
+ | download(cid: str, to: Union[str, pathlib.Path], progress: Callable[[int], None]) -> List[pathlib.Path]
 ```
 
 Download a chapter's pages to a folder.
@@ -219,6 +240,7 @@ Download a chapter's pages to a folder.
 
 - `cid` - The chapter id to download.
 - `to` - The folder to download the pages to.
+- `progress` - A callback function which is called with the page number every time a page is downloaded.
   
 
 **Returns**:

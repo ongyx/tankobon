@@ -5,25 +5,21 @@ from __future__ import annotations
 
 import abc
 import concurrent.futures as cfutures
-import functools
 import hashlib
 import json
 import logging
 import pathlib
 import shutil
 from dataclasses import dataclass
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Union
 
 import bs4
 import requests
 import fake_useragent as ua
+from natsort import natsorted
 
 from . import utils
 from .exceptions import MangaNotFoundError, PagesNotFoundError, UnknownDomainError
-
-# monkey-patch json for indent
-json.dump = functools.partial(json.dump, indent=2)
-json.dumps = functools.partial(json.dumps, indent=2)
 
 # type hints
 StrList = Optional[List[str]]
@@ -41,8 +37,7 @@ INDEX_FILE = "index.json"
 
 # Each manga has a unique hash name generated using MD5
 # (see Metadata.hash).
-# This hash name is used to create a per-manga directory (to store this file and the manga pages).
-CHAPTER_FILE = "chapters.json"
+# This hash name is used to create a per-manga directory (to store the manga pages).
 
 
 @dataclass
@@ -250,16 +245,37 @@ class Manga(abc.ABC):
 
                 self.data[chapter.id].pages = self.pages(chapter)
 
+    def select(self, start: str, end: str) -> List[str]:
+        """Select chapter ids from the start id to the end id.
+        The ids are sorted first.
+
+        Args:
+            start: The start chapter id.
+            end: The end chapter id.
+
+        Returns:
+            A list of all chapter ids between start and end (inclusive of start and end).
+        """
+
+        cids = natsorted(self.data.keys())
+        start_index = cids.index(start)
+        end_index = cids.index(end, start_index)
+
+        return cids[start_index : end_index + 1]
+
     def soup_from_url(self, url: str) -> bs4.BeautifulSoup:
         """Retreive a url and create a soup using its content."""
         return bs4.BeautifulSoup(self.session.get(url).text, BS4_PARSER)
 
-    def download(self, cid: str, to: Union[str, pathlib.Path]) -> List[pathlib.Path]:
+    def download(
+        self, cid: str, to: Union[str, pathlib.Path], progress: Callable[[int], None]
+    ) -> List[pathlib.Path]:
         """Download a chapter's pages to a folder.
 
         Args:
             cid: The chapter id to download.
             to: The folder to download the pages to.
+            progress: A callback function which is called with the page number every time a page is downloaded.
 
         Returns:
             A list of absolute paths to the downloaded pages in ascending order
@@ -289,7 +305,7 @@ class Manga(abc.ABC):
                 for count, url in enumerate(chapter.pages)
             }
 
-            for future in cfutures.as_completed(futures):
+            for progress_count, future in enumerate(cfutures.as_completed(futures)):
                 count = futures[future]
 
                 _log.info(f"manga: [{chapter.id}] downloading page {count} of {total}")
@@ -297,6 +313,9 @@ class Manga(abc.ABC):
                 resp = future.result()
                 path = utils.save_response(to / str(count), resp)
                 paths.append(path)
+
+                if progress is not None:
+                    progress(progress_count)
 
         return paths
 
@@ -386,7 +405,7 @@ class Cache:
             self.index = {}
 
     def _hash_name(self, url):
-        return self.index[url]["_hash"]
+        return self.index[url]["metadata"]["_hash"]
 
     def _hash_path(self, url):
         return self.path / self._hash_name(url)
@@ -403,20 +422,10 @@ class Cache:
         # make sure hash is generated
         manga.meta.hash
 
-        export = manga.export_dict()
-
-        metadata = export["metadata"]
-        chapters = export["chapters"]
-
-        # Save only metadata in the index for faster loading.
-        # Chapters are saved in another json file.
-        self.index[manga.url] = metadata
+        self.index[manga.url] = manga.export_dict()
 
         manga_path = self._hash_path(manga.url)
         manga_path.mkdir(exist_ok=True)
-
-        with (manga_path / CHAPTER_FILE).open("w") as f:
-            json.dump(chapters, f)
 
         if cover and manga.meta.cover:
             utils.save_response(manga_path / "cover", manga.download_cover())
@@ -438,10 +447,7 @@ class Cache:
                 f"{url} does not exist in cache. Did you try to create it? (Use Manga.from_url(url) instead.)"
             )
 
-        with (self._hash_path(url) / CHAPTER_FILE).open() as f:
-            chapters = json.load(f)
-
-        return Manga.import_dict({"metadata": self.index[url], "chapters": chapters})
+        return Manga.import_dict(self.index[url])
 
     def delete(self, url: str):
         """Delete a manga from the cache.
@@ -460,7 +466,7 @@ class Cache:
 
     def close(self):
         with self.index_path.open("w") as f:
-            json.dump(self.index, f, indent=2)
+            json.dump(self.index, f)
 
     def __enter__(self):
         return self

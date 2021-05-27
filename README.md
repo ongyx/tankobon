@@ -37,7 +37,7 @@ tankobon download https://catmanga.org/series/komi
 tankobon pdfify -o komi.pdf
 ```
 
-Or maybe you might want to use the (WIP) GUI instead:
+Or maybe you might want to use the GUI instead:
 
 ```bash
 tankobon gui
@@ -47,16 +47,16 @@ What it can do:
 
 - Add/refresh/delete manga
 - Show HTML-based previews of the manga cover, description, etc.
+- Download manga
 
 What it can't do:
 
-- Download manga
 - Show manga pages (pdf reader?)
 
 ## Todo
 
 - [ ] tests and docs (docs done)
-- [ ] create GUI to make downloading easier, like youtube-DLG (can view manga info, but no downloads yet)
+- [x] create GUI to make downloading easier, like youtube-DLG
 
 ## Install
 

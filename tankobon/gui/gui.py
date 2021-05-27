@@ -1,16 +1,24 @@
 # coding: utf8
+"""tankobon, version {}
+
+Copyright (c) 2020-2021 Ong Yong Xin
+Licensed under the MIT License.
+
+source code is hosted at https://github.com/ongyx/tankobon
+"""
 
 import pathlib
 import signal
 import sys
+import threading
 import traceback
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QDialogButtonBox,
+    QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QInputDialog,
@@ -20,6 +28,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QProgressDialog,
     QScrollArea,
     QSizePolicy,
     QSplashScreen,
@@ -48,6 +57,10 @@ MAX_COL = 5
 
 T_CREATE = "Create Manga"
 T_DELETE = "Delete Manga"
+T_DOWNLOAD = "Download Manga"
+
+MANGA = {}
+MANGA_LOCK = threading.Lock()
 
 
 def _is_ascii(s):
@@ -61,6 +74,14 @@ def _is_ascii(s):
 
 def _normalize(s):
     return s.replace("_", " ").capitalize()
+
+
+def _load_manga(url):
+    with MANGA_LOCK:
+        if url not in MANGA:
+            MANGA[url] = CACHE.load(url)
+
+        return MANGA[url]
 
 
 def delete(widget):
@@ -151,6 +172,19 @@ class RequiredDialog(QInputDialog):
             self.ok_button.setEnabled(False)
 
 
+class ProgressDialog(QProgressDialog):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.setMinimumDuration(0)
+        self.setWindowModality(Qt.WindowModal)
+
+    def onDownloaded(self, count, chapter):
+        if self.wasCanceled():
+            self.setValue(count)
+            self.setLabelText(f"Downloading chapter {chapter}...")
+
+
 # A manga item.
 class Item(QListWidgetItem):
     def __init__(self, metadata: dict):
@@ -237,7 +271,7 @@ class ItemList(QListWidget):
         super().__init__()
 
         for _, metadata in CACHE.index.items():
-            self.addItem(Item(metadata))
+            self.addItem(Item(metadata["metadata"]))
 
         self.reload()
 
@@ -250,21 +284,6 @@ class ItemList(QListWidget):
 
 
 MANGA_ITEMS = ItemList()
-
-
-class ChaptersView(QScrollArea):
-    def __init__(self, manga: core.Manga):
-        super().__init__()
-        self.manga = manga
-
-        self.container = QWidget()
-        self.setWidget(self.container)
-
-        self.layout = QVBoxLayout(self.container)
-
-        for cid in self.manga.data.keys():
-            checkbox = QCheckBox(cid)
-            self.layout.addWidget(checkbox)
 
 
 # Toolbar at the bottom of the window.
@@ -336,7 +355,7 @@ class ToolBar(QToolBar):
 
         url = manga_item.meta.url
         if url not in self.summaries:
-            manga = CACHE.load(url)
+            manga = _load_manga(url)
             self.summaries[url] = f"{len(manga.data)} chapters, {manga.total()} pages"
 
         self.summary.setText(self.summaries[url])
@@ -412,25 +431,79 @@ class ToolBar(QToolBar):
             return
 
         with SpinningCursor():
-            manga = CACHE.load(self.selected.meta.url)
+            manga = _load_manga(self.selected.meta.url)
             manga.refresh(pages=True)
             CACHE.save(manga)
 
     def download(self):
-        """
         if not self.ensureSelected("download"):
             return
 
-        manga = CACHE.load(self.selected.meta.url)
+        manga = _load_manga(self.selected.meta.url)
 
-        # ask which chapters to download
-        chapters_view = ChaptersView(manga)
-        chapters_view.show()
+        dialog = RequiredDialog()
+        dialog.setWindowTitle(T_DOWNLOAD)
+        dialog.setLabelText(
+            "Enter the chapters to download below, seperated by commas.\n"
+            "Ranges are also allowed, i.e 1-5."
+        )
+
+        dialog_code = dialog.exec()
+        if dialog_code == QInputDialog.Rejected:
+            return
+
+        chapters = []
+        for chapter in dialog.textValue().split(","):
+
+            if "-" in chapter:
+                try:
+                    chapters.extend(manga.select(*chapter.split("-")))
+                except ValueError:
+                    MessageBox.warn(
+                        T_DOWNLOAD,
+                        f"Chapter range {chapter} doesn't exist or is out of bounds.",
+                    )
+                    return
+
+            else:
+                if chapter not in manga.data:
+                    MessageBox.warn(T_DOWNLOAD, f"Chapter {chapter} doesn't exist.")
+                    return
+
+                chapters.append(chapter)
 
         download_path = QFileDialog.getExistingDirectory(
             self, "Choose a folder to download to.", str(HOME)
         )
-        """
+        download_path = pathlib.Path(download_path)
+
+        dialog = ProgressDialog(self)
+
+        def _progress(page_number):
+            dialog.setValue(page_number)
+
+        def _download(chapter):
+            chapter_path = download_path / chapter
+            chapter_path.mkdir()
+            manga.download(chapter, chapter_path, _progress)
+
+        for count, chapter in enumerate(chapters):
+
+            dialog.setLabelText(f"Downloading chapter {chapter}...")
+
+            total = len(manga.data[chapter].pages)
+
+            # HACK: make the progress bar display properly during first iteration
+            dialog.setMaximum(total)
+            dialog.setValue(total - 1)
+            dialog.setValue(0)
+
+            if dialog.wasCanceled():
+                break
+
+            _download(chapter)
+
+            dialog.setValue(total)
 
 
 # Toolbar at the top of the window.
@@ -438,12 +511,27 @@ class MenuBar(QMenuBar):
     def __init__(self):
         super().__init__()
 
-        file_menu = self.addMenu("File")
+        file = self.addMenu("File")
 
         file_quit = QAction("Quit", self)
         file_quit.triggered.connect(_app.quit)
 
-        file_menu.addAction(file_quit)
+        file.addAction(file_quit)
+
+        help = self.addMenu("Help")
+
+        help_tankobon = QAction("About tankobon", self)
+        help_tankobon.triggered.connect(self.about)
+
+        help.addAction(help_tankobon)
+
+        help_qt = QAction("About Qt", self)
+        help_qt.triggered.connect(_app.aboutQt)
+
+        help.addAction(help_qt)
+
+    def about(self):
+        QMessageBox.about(self, "About tankobon", __doc__.format(__version__))
 
 
 # The combined manga item list plus preview.
@@ -452,14 +540,13 @@ class View(QWidget):
         super().__init__()
         self.layout = QHBoxLayout(self)
 
-        # cache pixmaps so we don't have to keep loading them.
         self.pixmap_cache = {}
 
         # The split view at first shows the list of manga items and the default item view.
         # After a manga has been selected, there will be a total of three widgets:
         # - Manga item list
-        # - Manga cover
         # - Manga info.
+        # - Manga cover
         self.layout.addWidget(MANGA_ITEMS)
         self.layout.addWidget(self.default())
 
@@ -478,12 +565,13 @@ class View(QWidget):
     def onSelectedManga(self, manga_item):
         self.deleteLast()
 
-        manga = CACHE.load(manga_item.meta.url)
+        manga = _load_manga(manga_item.meta.url)
 
         textedit = QTextEdit()
         textedit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         textedit.setReadOnly(True)
-        textedit.setMarkdown(template.create(manga))
+        textedit.document().setDefaultStyleSheet(resources.view_css())
+        textedit.setHtml(template.create(manga))
 
         self.layout.addWidget(textedit)
 
@@ -537,6 +625,7 @@ class Root(QMainWindow):
 
     def closeEvent(self, event):
         if self.confirmQuit():
+
             CACHE.close()
             event.accept()
         else:

@@ -9,15 +9,9 @@ import pathlib
 import click
 import coloredlogs  # type: ignore
 
-try:
-    import fpdf
-    import imagesize
-    from natsort import natsorted
-except ImportError:
-    fpdf = None
-    imagesize = None
-    natsort = None
-
+import fpdf
+import imagesize
+from natsort import natsorted
 
 from . import __version__, core, parsers  # noqa: F401
 from .exceptions import MangaNotFoundError
@@ -141,7 +135,8 @@ def _list():
             click.echo("(none)")
 
         else:
-            for url, metadata in cache.index.items():
+            for url, data in cache.index.items():
+                metadata = data["metadata"]
                 print(f"{url}: {metadata['title']} ({metadata['_hash']})")
 
 
