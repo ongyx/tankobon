@@ -22,6 +22,7 @@ requires = [
     "fpdf>=1.7.2",
     "html5lib>=1.1",
     "imagesize>=1.2.0",
+    "MangaDex.py>=2.0.3",
     "natsort>=7.1.0",
     "requests>=2.24.0",
 ]
@@ -31,7 +32,10 @@ requires-python = ">=3.6"
 gui = [
     "PySide6>=6.0.3"
 ]
-docs = [
+dev = [
+    "pytest",
+    "pytest-flake8",
+    "pytest-mypy",
     "pydoc-markdown>=3.10.1"
 ]
 

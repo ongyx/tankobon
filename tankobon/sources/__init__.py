@@ -1,7 +1,9 @@
 # coding: utf8
-"""This directory contains parsers for several websites.
+"""This directory contains sources for several websites.
 
-Parsers are analogous to youtube-dl extractors: they define how to parse out infomation of a manga on a webpage.
+Sources are analogous to youtube-dl extractors: they define how to parse out infomation of a manga on a webpage.
+
+Sources contain two classes: parsers and searchers.
 Parsers *must* subclass and satisfy the tankobon.manga.Manga interface.
 
 Typically, parsers make heavy use of regexes and leverage the BeautifulSoup API through the .soup attribute:
@@ -43,7 +45,7 @@ def _register():
     # import for side effects (register default parser classes)
     for submodule in pathlib.Path(__file__).parent.glob("*.py"):
         if submodule.stem != "__init__":
-            _ = importlib.import_module(f"tankobon.parsers.{submodule.stem}")
+            _ = importlib.import_module(f"tankobon.sources.{submodule.stem}")
 
 
 _register()

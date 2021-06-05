@@ -1,10 +1,16 @@
 # coding: utf8
-"""tankobon, version {}
+"""
+# tankobon, version {version}
 
 Copyright (c) 2020-2021 Ong Yong Xin
+
 Licensed under the MIT License.
 
-source code is hosted at https://github.com/ongyx/tankobon
+source code is hosted on github at [ongyx/tankobon](https://github.com/ongyx/tankobon")
+
+sources:
+
+{supported}
 """
 
 import pathlib
@@ -13,7 +19,7 @@ import sys
 import threading
 import traceback
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QObject, QSize, QThread
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -40,7 +46,7 @@ from PySide6.QtWidgets import (
     QWidgetItem,
 )
 
-from .. import core, parsers  # noqa: F401
+from .. import core, sources  # noqa: F401
 from . import resources, template
 
 from ..__version__ import __version__
@@ -107,8 +113,9 @@ class TitleLabel(QLabel):
         super().__init__(*args)
         self.setTextFormat(Qt.RichText)
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("background-color:#CCCCFF;")
         self.setWordWrap(True)
+        self.setStyleSheet("background-color: #CCCCFF; color: black;")
+        self.setAutoFillBackground(True)
 
 
 # A message box without the window icon.
@@ -137,6 +144,34 @@ class MessageBox(QMessageBox):
     def crit(cls, title, text):
         msgbox = cls(cls.Critical, title, text, cls.Ok)
         return msgbox.exec()
+
+
+class AboutBox(MessageBox):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.setWindowTitle("About")
+
+        # build table of supported sources
+        supported = []
+        for domain, cls in core.Manga.registered.items():
+            supported.append(f"`{cls.__module__}` ({domain})  ")
+
+        self.setTextFormat(Qt.MarkdownText)
+        self.setText(
+            __doc__.format(
+                version=__version__,
+                supported="\n".join(supported),
+            )
+        )
+
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+        small_logo = LOGO.scaled(
+            QSize(256, 256), Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+
+        self.setIconPixmap(small_logo)
 
 
 def _excepthook(ex_type, ex_value, ex_traceback):
@@ -178,11 +213,7 @@ class ProgressDialog(QProgressDialog):
 
         self.setMinimumDuration(0)
         self.setWindowModality(Qt.WindowModal)
-
-    def onDownloaded(self, count, chapter):
-        if self.wasCanceled():
-            self.setValue(count)
-            self.setLabelText(f"Downloading chapter {chapter}...")
+        self.setAttribute(Qt.WA_DeleteOnClose, True)
 
 
 # A manga item.
@@ -198,7 +229,7 @@ class Item(QListWidgetItem):
 class ItemInfoBox(QWidget):
     def __init__(self, item: Item):
         super().__init__()
-        self.layout = QGridLayout(self)
+        layout = QGridLayout(self)
 
         meta = item.meta
 
@@ -207,7 +238,7 @@ class ItemInfoBox(QWidget):
 
         # wikipedia-style info box at the side
         title = TitleLabel(f"<h2><i>{meta.title}</i></h2>")
-        self.layout.addWidget(title, 0, 0, *SPAN)
+        layout.addWidget(title, 0, 0, *SPAN)
 
         cover = QPixmap()
         try:
@@ -229,31 +260,48 @@ class ItemInfoBox(QWidget):
         self.cover_label = QLabel()
         self.cover_label.setPixmap(self.cover)
         self.resizeCover()
-        self.layout.addWidget(self.cover_label, 1, 0, *SPAN)
+        layout.addWidget(self.cover_label, 1, 0, *SPAN)
 
-        _alt_titles = "<br>".join(
-            f"<i>{t}</i>" if _is_ascii(t) else t for t in meta.alt_titles
-        )
+        if meta.alt_titles is not None:
+            _alt_titles = "<br>".join(
+                f"<i>{t}</i>" if _is_ascii(t) else t for t in meta.alt_titles
+            )
+
+        else:
+            _alt_titles = "(empty)"
+
         alt_titles = TitleLabel(_alt_titles)
-        alt_titles.setStyleSheet("background-color:#DDDDFF;")
-        self.layout.addWidget(alt_titles, 2, 0, *SPAN)
+        alt_titles.setStyleSheet("background-color: #DDDDFF; color: black;")
+        layout.addWidget(alt_titles, 2, 0, *SPAN)
 
         genre_header = QLabel("<b>Genre</b>")
         genre_header.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.layout.addWidget(genre_header, 3, 0)
+        layout.addWidget(genre_header, 3, 0)
 
-        genre = QLabel("<br>".join(_normalize(g) for g in meta.genres))
-        self.layout.addWidget(genre, 3, 1)
+        if meta.genres is not None:
+            _genres = "<br>".join(_normalize(g) for g in meta.genres)
+
+        else:
+            _genres = "(empty)"
+
+        genres = QLabel(_genres)
+        layout.addWidget(genres, 3, 1)
 
         manga_header = TitleLabel("<b>Manga</b>")
-        self.layout.addWidget(manga_header, 4, 0, *SPAN)
+        layout.addWidget(manga_header, 4, 0, *SPAN)
 
         author_header = QLabel("<b>Authored by</b>")
         author_header.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.layout.addWidget(author_header, 5, 0)
+        layout.addWidget(author_header, 5, 0)
 
-        author = QLabel("<br>".join(a for a in meta.authors))
-        self.layout.addWidget(author, 5, 1)
+        if meta.authors is not None:
+            _authors = "<br>".join(a for a in meta.authors)
+
+        else:
+            _authors = "(empty)"
+
+        authors = QLabel(_authors)
+        layout.addWidget(authors, 5, 1)
 
     def resizeCover(self):
         self.cover = self.cover.scaled(
@@ -269,21 +317,44 @@ class ItemInfoBox(QWidget):
 class ItemList(QListWidget):
     def __init__(self):
         super().__init__()
+        self.urls = set()
 
         for _, metadata in CACHE.index.items():
             self.addItem(Item(metadata["metadata"]))
 
         self.reload()
 
+    def addItem(self, item):
+        self.urls.add(item.meta.url)
+        super().addItem(item)
+
     def reload(self):
         self.setMaximumWidth(self.sizeHintForColumn(0) + 5)
 
-    def onAddItem(self, item):
-        self.addItem(item)
-        self.limitSize()
-
 
 MANGA_ITEMS = ItemList()
+
+
+class MangaWorker(QObject):
+    progress = Signal(object)
+    done = Signal()
+    failed = Signal(Exception)
+
+    def download(self, manga, *args, **kwargs):
+        try:
+            manga.download(*args, **kwargs, progress=self.progress.emit)
+        except Exception as e:
+            self.failed.emit(e)
+
+        self.done.emit()
+
+    def refresh(self, manga, *args, **kwargs):
+        try:
+            manga.refresh(*args, **kwargs, progress=self.progress.emit)
+        except Exception as e:
+            self.failed.emit(e)
+
+        self.done.emit()
 
 
 # Toolbar at the bottom of the window.
@@ -373,6 +444,43 @@ class ToolBar(QToolBar):
 
         return True
 
+    def _refresh(self, manga):
+        dialog = ProgressDialog(self)
+        # busy indicator (we dont know how many chapters are there)
+        dialog.setRange(0, 0)
+
+        thread = QThread(self)
+        worker = MangaWorker()
+
+        thread.started.connect(lambda: worker.refresh(manga, pages=True))
+
+        def on_done():
+            thread.quit()
+
+            dialog.close()
+
+            CACHE.save(manga, cover=True)
+
+            # add to item list (only if manga is new)
+            if manga.url not in MANGA_ITEMS.urls:
+                MANGA_ITEMS.addItem(Item(manga.meta.__dict__))
+                MANGA_ITEMS.reload()
+
+        # raise exception in current context so manga are not partially parsed.
+        def on_failed(exc):
+            raise exc
+
+        worker.progress.connect(
+            lambda chapter: dialog.setLabelText(f"Parsing chapter {chapter}...")
+        )
+        worker.failed.connect(on_failed)
+        worker.done.connect(on_done)
+
+        dialog.show()
+        QApplication.processEvents()
+
+        thread.start()
+
     def create(self):
         dialog = RequiredDialog()
         dialog.setWindowTitle(T_CREATE)
@@ -401,14 +509,7 @@ class ToolBar(QToolBar):
             )
             return
 
-        with SpinningCursor():
-            manga.refresh(pages=True)
-            CACHE.save(manga, cover=True)
-
-        # add to item list
-        MANGA_ITEMS.addItem(Item(manga.meta.__dict__))
-        MANGA_ITEMS.reload()
-        QApplication.processEvents()
+        self._refresh(manga)
 
     def delete(self):
         if not self.ensureSelected("delete"):
@@ -430,10 +531,8 @@ class ToolBar(QToolBar):
         if not self.ensureSelected("refresh"):
             return
 
-        with SpinningCursor():
-            manga = _load_manga(self.selected.meta.url)
-            manga.refresh(pages=True)
-            CACHE.save(manga)
+        manga = _load_manga(self.selected.meta.url)
+        self._refresh(manga)
 
     def download(self):
         if not self.ensureSelected("download"):
@@ -479,13 +578,10 @@ class ToolBar(QToolBar):
 
         dialog = ProgressDialog(self)
 
-        def _progress(page_number):
-            dialog.setValue(page_number)
-
         def _download(chapter):
             chapter_path = download_path / chapter
             chapter_path.mkdir()
-            manga.download(chapter, chapter_path, _progress)
+            manga.download(chapter, chapter_path, progress=dialog.setValue)
 
         for count, chapter in enumerate(chapters):
 
@@ -531,7 +627,8 @@ class MenuBar(QMenuBar):
         help.addAction(help_qt)
 
     def about(self):
-        QMessageBox.about(self, "About tankobon", __doc__.format(__version__))
+        about_box = AboutBox(self)
+        about_box.exec()
 
 
 # The combined manga item list plus preview.

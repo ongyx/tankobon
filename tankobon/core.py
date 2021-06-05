@@ -11,12 +11,12 @@ import logging
 import pathlib
 import shutil
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Type, Union
 
-import bs4
+import bs4  # type: ignore
 import requests
-import fake_useragent as ua
-from natsort import natsorted
+import fake_useragent as ua  # type: ignore
+from natsort import natsorted  # type: ignore
 
 from . import utils
 from .exceptions import MangaNotFoundError, PagesNotFoundError, UnknownDomainError
@@ -127,10 +127,8 @@ class Manga(abc.ABC):
         soup: The BeautifulSoup of the manga title page.
     """
 
-    # It might seem like a bad idea to have a mutable class attribute,
-    # but it is intended to be shared across all class instances.
     # This allows subclasses to be registered.
-    registered: Dict[str, Dict] = {}
+    registered: Dict[str, Type[Manga]] = {}
 
     def __init__(self, data: Dict[str, Any]):
         self.meta = Metadata(**data["metadata"])
@@ -140,7 +138,7 @@ class Manga(abc.ABC):
             {"Referer": self.meta.url, "User-Agent": USER_AGENT.random}
         )
 
-        self.soup = self.soup_from_url(self.meta.url)
+        self._soup = None
 
         if not self.meta.parsed():
             self.meta = self.metadata()
@@ -151,6 +149,13 @@ class Manga(abc.ABC):
 
         if chapters is not None:
             self.data = {cid: Chapter(**cdata) for cid, cdata in chapters.items()}
+
+    @property
+    def soup(self):
+        if self._soup is None:
+            self._soup = self.soup_from_url(self.meta.url)
+
+        return self._soup
 
     @classmethod
     def parser(cls, url: str):
@@ -202,7 +207,8 @@ class Manga(abc.ABC):
 
     def close(self):
         self.session.close()
-        self.soup.decompose()
+        if self._soup is not None:
+            self._soup.decompose()
 
     def export_dict(self) -> Dict[str, Any]:
         """Export the manga data.
@@ -217,12 +223,16 @@ class Manga(abc.ABC):
             "chapters": {cid: cdata.__dict__ for cid, cdata in self.data.items()},
         }
 
-    def refresh(self, pages: bool = False):
+    def refresh(
+        self, pages: bool = False, *, progress: Optional[Callable[[str], None]] = None
+    ):
         """Refresh the list of chapters available.
 
         Args:
             pages: Whether or not to parse the pages for any new chapters.
                 Defaults to False (may take up a lot of bandwidth for many chapters).
+            progress: A callback function called with the chapter id every time it is parsed.
+                Defaults to None.
         """
 
         self.meta = self.metadata()
@@ -234,6 +244,9 @@ class Manga(abc.ABC):
                 _log.info("manga: adding new chapter %s", chapter.id)
 
                 self.data[chapter.id] = chapter
+
+                if progress is not None:
+                    progress(chapter.id)
 
             else:
                 # take the reference to the existing chapter so assigning pages will work properly.
@@ -268,7 +281,11 @@ class Manga(abc.ABC):
         return bs4.BeautifulSoup(self.session.get(url).text, BS4_PARSER)
 
     def download(
-        self, cid: str, to: Union[str, pathlib.Path], progress: Callable[[int], None]
+        self,
+        cid: str,
+        to: Union[str, pathlib.Path],
+        *,
+        progress: Optional[Callable[[int], None]] = None,
     ) -> List[pathlib.Path]:
         """Download a chapter's pages to a folder.
 
@@ -276,6 +293,7 @@ class Manga(abc.ABC):
             cid: The chapter id to download.
             to: The folder to download the pages to.
             progress: A callback function which is called with the page number every time a page is downloaded.
+                Defaults to None.
 
         Returns:
             A list of absolute paths to the downloaded pages in ascending order
@@ -283,7 +301,7 @@ class Manga(abc.ABC):
 
         Raises:
             PagesNotFoundError, if the chapter's pages have not been parsed yet.
-            To avoid this, .pages(refresh=True) should be called at least once.
+            To avoid this, .refresh(pages=True) should be called at least once.
         """
 
         to = pathlib.Path(to)

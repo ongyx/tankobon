@@ -5,18 +5,19 @@ import functools
 import json
 import logging
 import pathlib
+from typing import Any, Callable
 
 import click
 import coloredlogs  # type: ignore
 
-import fpdf
-import imagesize
-from natsort import natsorted
+import fpdf  # type: ignore
+import imagesize  # type: ignore
+from natsort import natsorted  # type: ignore
 
-from . import __version__, core, parsers  # noqa: F401
+from . import __version__, core, sources  # noqa: F401
 from .exceptions import MangaNotFoundError
 
-click.option = functools.partial(click.option, show_default=True)  # type: ignore
+click.option: Callable[..., Any] = functools.partial(click.option, show_default=True)  # type: ignore
 
 _log = logging.getLogger("tankobon")
 VERBOSITY = [

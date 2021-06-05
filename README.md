@@ -8,17 +8,24 @@
 ![PyPI](https://img.shields.io/pypi/v/tankobon)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/tankobon)
 ![Lines of code](https://img.shields.io/tokei/lines/github/ongyx/tankobon)
+![calver](https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg)
 
 ## What?
 
-tankobon is (somewhat) like youtube-dl for manga websites: it aims to make creating parsers for manga hosting websites easy.
+tankobon is (somewhat) like youtube-dl for manga websites: you can fetch manga from a few sources (websites).
 
-(Plus, it and its dependencies are pure Python!)
-
-Currently, the following websites are supported (rip mangadex, hope we'll see you soon):
+Currently, the following websites are supported:
 
 - `catmanga.org`
 - `mangakakalot.com`
+
+## Versioning Change
+
+tankobon will now use the version format `YYYY.MM.MICRO`:
+
+- `YYYY` is the full 4-digit year.
+- `MM` is the 1-2 digit month.
+- `MICRO` is the release number for that month.
 
 ## API Docs
 
@@ -62,10 +69,21 @@ What it can't do:
 
 `pip install tankobon`
 
-## Build
+## Contributing
 
-All my python projects now use [flit](https://pypi.org/project/flit) to build and publish.
-To build, do `flit build`.
+Just send in a PR with your feature changes/bug fixes. To set up development builds for tankobon, do the following:
+
+```bash
+$ git clone https://github.com/ongyx/tankobon && cd tankobon
+
+# (create and enter a virtualenv if you want)
+$ flit install -s  # Install tankobon as a symlink (any changes to source code will be reflected immediately)
+
+# (make your code changes here...)
+
+# Make sure to fix any style/type errors if they show up by running this.
+$ pytest --flake8 --mypy
+```
 
 ## License
 

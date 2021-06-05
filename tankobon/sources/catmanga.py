@@ -1,8 +1,10 @@
 # coding: utf8
 
 import json
+import re
 
 from .. import core
+from ..exceptions import MangaError
 
 METADATA_MAP = {
     "title": "title",
@@ -16,9 +18,7 @@ METADATA_MAP = {
 class Manga(core.Manga):
 
     domain = "catmanga.org"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    regex = re.compile(r"/series/\w+")
 
     @property
     def _data(self):
