@@ -87,7 +87,7 @@ $ pytest --flake8 --mypy
 
 ## Credits
 
-[feather](https://github.com/feathericons/feather) for the icons (all svgs) in the [`res`](./res) folder.
+[feather](https://github.com/feathericons/feather) for the icons (all svgs) in the [`resources`](./resources) folder.
 
 ## License
 

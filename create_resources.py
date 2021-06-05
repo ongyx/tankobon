@@ -14,7 +14,7 @@ QRC_TEMPLATE = """
 
 CURDIR = pathlib.Path(__file__).parent
 COMPILER = "pyside6-rcc"
-RESOURCES = CURDIR / "res"
+RESOURCES = CURDIR / "resources"
 DESTINATION = CURDIR / "tankobon" / "gui" / "resources.py"
 
 
