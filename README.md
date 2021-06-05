@@ -85,6 +85,10 @@ $ flit install -s  # Install tankobon as a symlink (any changes to source code w
 $ pytest --flake8 --mypy
 ```
 
+## Credits
+
+[feather](https://github.com/feathericons/feather) for the icons (all svgs) in the [`res`](./res) folder.
+
 ## License
 
 MIT.

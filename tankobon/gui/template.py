@@ -8,9 +8,9 @@ from PySide6.QtWidgets import QTextEdit
 from ..core import Manga
 from ..cli import _info_table
 
-from . import resources
+from .utils import resource
 
-TEMPLATE = string.Template(resources.view_html())
+TEMPLATE = string.Template(resource(":/view.html").decode("utf8"))
 
 
 def create(manga: Manga):

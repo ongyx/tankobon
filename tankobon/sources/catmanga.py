@@ -4,7 +4,8 @@ import json
 import re
 
 from .. import core
-from ..exceptions import MangaError
+
+# from ..exceptions import MangaError
 
 METADATA_MAP = {
     "title": "title",

@@ -6,7 +6,7 @@ Copyright (c) 2020-2021 Ong Yong Xin
 
 Licensed under the MIT License.
 
-source code is hosted on github at [ongyx/tankobon](https://github.com/ongyx/tankobon")
+star this project at [ongyx/tankobon](https://github.com/ongyx/tankobon) or something, idk
 
 sources:
 
@@ -47,14 +47,14 @@ from PySide6.QtWidgets import (
 )
 
 from .. import core, sources  # noqa: F401
-from . import resources, template
+from . import resources, template, utils  # noqa: F401
 
 from ..__version__ import __version__
 
 _app = QApplication([])
 QStyle = _app.style()
 
-LOGO = resources.pixmap("logo")
+LOGO = QPixmap(":/logo.jpg")
 
 HOME = pathlib.Path.home()
 CACHE = core.Cache()
@@ -245,7 +245,7 @@ class ItemInfoBox(QWidget):
             cover_path = next(CACHE._hash_path(meta.url).glob("cover.*"))
 
         except StopIteration:
-            cover = resources.pixmap("missing")
+            cover = QPixmap(":/missing.jpg")
 
         else:
             cover.load(str(cover_path))
@@ -367,22 +367,22 @@ class ToolBar(QToolBar):
         {
             "method": "create",
             "tooltip": "Add a manga...",
-            "icon": QStyle.SP_FileDialogNewFolder,
+            "icon": ":/plus.svg",
         },
         {
             "method": "delete",
             "tooltip": "Delete the selected manga...",
-            "icon": QStyle.SP_TrashIcon,
+            "icon": ":/minus.svg",
         },
         {
             "method": "refresh",
             "tooltip": "Refresh the selected manga...",
-            "icon": QStyle.SP_BrowserReload,
+            "icon": ":/refresh-cw.svg",
         },
         {
             "method": "download",
             "tooltip": "Download the selected manga...",
-            "icon": QStyle.SP_DialogSaveButton,
+            "icon": ":/download.svg",
         },
     ]
 
@@ -395,10 +395,17 @@ class ToolBar(QToolBar):
 
         self.summaries = {}
 
+        bg_is_dark = utils.is_dark(_app.palette().window().color())
+
         for button_info in self.BUTTONS:
             method = getattr(self, button_info["method"])
             tooltip = button_info["tooltip"]
-            icon = QStyle.standardIcon(button_info["icon"])
+
+            icon_path = button_info["icon"]
+            if bg_is_dark:
+                icon = QIcon(icon_path.replace(".svg", "-light.svg"))
+            else:
+                icon = QIcon(icon_path)
 
             action = QAction()
             action.setToolTip(tooltip)
@@ -667,7 +674,9 @@ class View(QWidget):
         textedit = QTextEdit()
         textedit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         textedit.setReadOnly(True)
-        textedit.document().setDefaultStyleSheet(resources.view_css())
+        textedit.document().setDefaultStyleSheet(
+            utils.resource(":/view.css").decode("utf8")
+        )
         textedit.setHtml(template.create(manga))
 
         self.layout.addWidget(textedit)
