@@ -188,7 +188,7 @@ The dict can be saved to disk and loaded back later using import_dict().
 #### refresh
 
 ```python
- | refresh(pages: bool = False)
+ | refresh(pages: bool = False, *, progress: Optional[Callable[[str], None]] = None)
 ```
 
 Refresh the list of chapters available.
@@ -197,6 +197,8 @@ Refresh the list of chapters available.
 
 - `pages` - Whether or not to parse the pages for any new chapters.
   Defaults to False (may take up a lot of bandwidth for many chapters).
+- `progress` - A callback function called with the chapter id every time it is parsed.
+  Defaults to None.
 
 <a name="tankobon.core.Manga.select"></a>
 #### select
@@ -231,7 +233,7 @@ Retreive a url and create a soup using its content.
 #### download
 
 ```python
- | download(cid: str, to: Union[str, pathlib.Path], progress: Callable[[int], None]) -> List[pathlib.Path]
+ | download(cid: str, to: Union[str, pathlib.Path], *, progress: Optional[Callable[[int], None]] = None) -> List[pathlib.Path]
 ```
 
 Download a chapter's pages to a folder.
@@ -241,6 +243,7 @@ Download a chapter's pages to a folder.
 - `cid` - The chapter id to download.
 - `to` - The folder to download the pages to.
 - `progress` - A callback function which is called with the page number every time a page is downloaded.
+  Defaults to None.
   
 
 **Returns**:
@@ -252,7 +255,7 @@ Download a chapter's pages to a folder.
 **Raises**:
 
   PagesNotFoundError, if the chapter's pages have not been parsed yet.
-  To avoid this, .pages(refresh=True) should be called at least once.
+  To avoid this, .refresh(pages=True) should be called at least once.
 
 <a name="tankobon.core.Manga.download_cover"></a>
 #### download\_cover
