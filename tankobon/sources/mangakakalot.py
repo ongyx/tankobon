@@ -10,7 +10,7 @@ RE_CHAPTER = re.compile(r".*[Cc]hapter ?([\d\.]+) ?:? ?(.*)")
 
 class Manga(core.Manga):
 
-    domain = "mangakakalot.com"
+    domain = r"mangakakalot.com"
 
     def metadata(self):
         info = self.soup.find(class_="manga-info-text").find_all("li")

@@ -73,7 +73,9 @@ def _info_table(manga):
         for chapter in chapters:
             table.append(
                 "| {:<6} | {:<7} | {}".format(
-                    volume, chapter.id, chapter.title or "(empty)"
+                    volume or "(empty)",
+                    chapter.id or "(empty)",
+                    chapter.title or "(empty)",
                 )
             )
 
@@ -126,7 +128,9 @@ def info(url, chapter):
 def _list():
     """List all manga in the cache."""
 
-    _pprint({"supported websites": list(core.Manga.registered.keys())})
+    _pprint(
+        {"supported websites": [cls.domain.pattern for cls in core.Manga.registered]}
+    )
 
     click.echo("cached manga:\n")
 
@@ -143,14 +147,8 @@ def _list():
 
 @cli.command()
 @click.argument("url")
-@click.option(
-    "-p",
-    "--pages",
-    is_flag=True,
-    help="parse pages for chapters without any pages",
-)
 def refresh(url, pages):
-    """Create/refresh data for a manga by url.
+    """Create/refresh chapters for a manga by url.
     You can add manga urls using this command (it will be created if it does not exist).
     """
 
@@ -163,8 +161,6 @@ def refresh(url, pages):
         else:
             click.echo("loading existing manga")
             manga = cache.load(url)
-
-        manga.refresh(pages=pages)
 
         click.echo("saving changes")
         cache.save(manga)

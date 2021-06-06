@@ -19,7 +19,7 @@ import sys
 import threading
 import traceback
 
-from PySide6.QtCore import Qt, Signal, QObject, QSize, QThread
+from PySide6.QtCore import Qt, Signal, QObject, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -154,8 +154,8 @@ class AboutBox(MessageBox):
 
         # build table of supported sources
         supported = []
-        for domain, cls in core.Manga.registered.items():
-            supported.append(f"`{cls.__module__}` ({domain})  ")
+        for cls in core.Manga.registered:
+            supported.append(f"`{cls.__module__}` ({cls.domain.pattern})  ")
 
         self.setTextFormat(Qt.MarkdownText)
         self.setText(
@@ -434,7 +434,7 @@ class ToolBar(QToolBar):
         url = manga_item.meta.url
         if url not in self.summaries:
             manga = _load_manga(url)
-            self.summaries[url] = f"{len(manga.data)} chapters, {manga.total()} pages"
+            self.summaries[url] = f"{len(manga.data)} chapters"
 
         self.summary.setText(self.summaries[url])
 
@@ -452,19 +452,11 @@ class ToolBar(QToolBar):
         return True
 
     def _refresh(self, manga):
-        dialog = ProgressDialog(self)
-        # busy indicator (we dont know how many chapters are there)
-        dialog.setRange(0, 0)
 
-        thread = QThread(self)
-        worker = MangaWorker()
+        with SpinningCursor():
+            worker = MangaWorker()
 
-        thread.started.connect(lambda: worker.refresh(manga, pages=True))
-
-        def on_done():
-            thread.quit()
-
-            dialog.close()
+            worker.refresh(manga)
 
             CACHE.save(manga, cover=True)
 
@@ -472,21 +464,6 @@ class ToolBar(QToolBar):
             if manga.url not in MANGA_ITEMS.urls:
                 MANGA_ITEMS.addItem(Item(manga.meta.__dict__))
                 MANGA_ITEMS.reload()
-
-        # raise exception in current context so manga are not partially parsed.
-        def on_failed(exc):
-            raise exc
-
-        worker.progress.connect(
-            lambda chapter: dialog.setLabelText(f"Parsing chapter {chapter}...")
-        )
-        worker.failed.connect(on_failed)
-        worker.done.connect(on_done)
-
-        dialog.show()
-        QApplication.processEvents()
-
-        thread.start()
 
     def create(self):
         dialog = RequiredDialog()
@@ -594,6 +571,7 @@ class ToolBar(QToolBar):
 
             dialog.setLabelText(f"Downloading chapter {chapter}...")
 
+            manga.refresh_pages([chapter])
             total = len(manga.data[chapter].pages)
 
             # HACK: make the progress bar display properly during first iteration

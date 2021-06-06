@@ -9,9 +9,10 @@ import hashlib
 import json
 import logging
 import pathlib
+import re
 import shutil
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generator, List, Optional, Type, Union
+from typing import cast, Any, Callable, Dict, Generator, List, Optional, Type, Union
 
 import bs4  # type: ignore
 import requests
@@ -110,25 +111,32 @@ class Manga(abc.ABC):
     """A manga hosted somewhere online.
 
     Attributes:
-        data: A map of chapter id to the Chapter object.
-        domain: The name of the manga host website, i.e 'mangadex.org'.
-            This **must** be set in any derived subclasses like so:
 
-            class MyManga(Manga):
-                domain = 'mymanga.com'
-                ...
+        data: A map of chapter id to the Chapter object.
+
+        domain: The regex of the manga url as a string.
+            This is used to determine whether this class is suitable for parsing a manga url.
+            It must be set in any subclasses:
+
+            class MyManga(tankobon.core.Manga):
+
+                domain = r"my-manga-host.com"
 
         hash: A MD5 checksum of the manga title + url.
             This can be used to uniquely identify manga.
+
         meta: The manga metadata as a Metadata object.
-        registered: A map of subclass domain to the subclass itself.
-            Subclasses can then be delegated to depending on a url's domain.
+
+        registered: A list of Manga subclasses
+            (Subclasses are automatically registered.)
+
         session: The requests.Session used to download soups.
+
         soup: The BeautifulSoup of the manga title page.
     """
 
     # This allows subclasses to be registered.
-    registered: Dict[str, Type[Manga]] = {}
+    registered: List[Type[Manga]] = []
 
     def __init__(self, data: Dict[str, Any]):
         self.meta = Metadata(**data["metadata"])
@@ -139,9 +147,6 @@ class Manga(abc.ABC):
         )
 
         self._soup = None
-
-        if not self.meta.parsed():
-            self.meta = self.metadata()
 
         self.data: Dict[str, Chapter] = {}
 
@@ -158,7 +163,7 @@ class Manga(abc.ABC):
         return self._soup
 
     @classmethod
-    def parser(cls, url: str):
+    def parser(cls, url: str) -> Type[Manga]:
         """Get the appropiate subclass for the domain in url.
 
         Args:
@@ -171,14 +176,11 @@ class Manga(abc.ABC):
             UnknownDomainError, if there is no registered subclass for the url domain.
         """
 
-        domain = utils.parse_domain(url)
+        for subclass in cls.registered:
+            if subclass.domain.search(url):  # type: ignore
+                return subclass
 
-        try:
-            subclass = cls.registered[domain]
-        except KeyError:
-            raise UnknownDomainError(f"no parser found for domain '{domain}'")
-
-        return subclass
+        raise UnknownDomainError(f"no source found for url '{url}'")
 
     @classmethod
     def from_url(cls, url: str) -> Manga:
@@ -223,14 +225,10 @@ class Manga(abc.ABC):
             "chapters": {cid: cdata.__dict__ for cid, cdata in self.data.items()},
         }
 
-    def refresh(
-        self, pages: bool = False, *, progress: Optional[Callable[[str], None]] = None
-    ):
+    def refresh(self, *, progress: Optional[Callable[[str], None]] = None):
         """Refresh the list of chapters available.
 
         Args:
-            pages: Whether or not to parse the pages for any new chapters.
-                Defaults to False (may take up a lot of bandwidth for many chapters).
             progress: A callback function called with the chapter id every time it is parsed.
                 Defaults to None.
         """
@@ -248,15 +246,26 @@ class Manga(abc.ABC):
                 if progress is not None:
                     progress(chapter.id)
 
-            else:
-                # take the reference to the existing chapter so assigning pages will work properly.
-                chapter = self.data[chapter.id]
+    def refresh_pages(self, chapter_ids: Optional[List[str]] = None):
+        """Refresh the pages available for the chapters.
+        Any existing chapters with pages already are ignored.
 
-            if pages and chapter.pages is None:
+        Args:
+            chapters: A list of chapter ids to refresh.
+                If None, all chapters will be refreshed (may take a while).
+        """
+
+        if chapter_ids is None:
+            chapter_ids = cast(list, self.data.keys())
+
+        for chapter_id in chapter_ids:
+            chapter = self.data[chapter_id]
+
+            if chapter.pages is None:
 
                 _log.info("manga: adding pages to chapter %s", chapter.id)
 
-                self.data[chapter.id].pages = self.pages(chapter)
+                chapter.pages = self.pages(chapter)
 
     def select(self, start: str, end: str) -> List[str]:
         """Select chapter ids from the start id to the end id.
@@ -298,10 +307,6 @@ class Manga(abc.ABC):
         Returns:
             A list of absolute paths to the downloaded pages in ascending order
             (1.png, 2.png, 3.png, etc.)
-
-        Raises:
-            PagesNotFoundError, if the chapter's pages have not been parsed yet.
-            To avoid this, .refresh(pages=True) should be called at least once.
         """
 
         to = pathlib.Path(to)
@@ -311,9 +316,10 @@ class Manga(abc.ABC):
         chapter = self.data[cid]
 
         if chapter.pages is None:
-            raise PagesNotFoundError(
-                f"chapter {cid} has no pages (did you forget to call .refresh(pages=True)?)"
-            )
+            _log.warning(f"manga: [{chapter.id}] pages not found, refreshing")
+            self.refresh_pages([chapter.id])
+
+        chapter.pages = cast(list, chapter.pages)
 
         total = len(chapter.pages)
 
@@ -391,7 +397,8 @@ class Manga(abc.ABC):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
 
-        cls.registered[cls.domain] = cls
+        cls.domain = re.compile(cls.domain)
+        cls.registered.append(cls)
 
     def __getattr__(self, attr):
         try:
@@ -484,7 +491,7 @@ class Cache:
 
     def close(self):
         with self.index_path.open("w") as f:
-            json.dump(self.index, f)
+            json.dump(self.index, f, indent=2)
 
     def __enter__(self):
         return self

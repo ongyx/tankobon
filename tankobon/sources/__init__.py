@@ -37,15 +37,5 @@ When subclassed, the new parser will automatically be registered (as long as it 
 The parser will then be delegated to based on the domain name (using urlparse's netloc).
 """
 
-import importlib
-import pathlib
-
-
-def _register():
-    # import for side effects (register default parser classes)
-    for submodule in pathlib.Path(__file__).parent.glob("*.py"):
-        if submodule.stem != "__init__":
-            _ = importlib.import_module(f"tankobon.sources.{submodule.stem}")
-
-
-_register()
+# import to register default sources
+from . import catmanga, mangadex, mangakakalot

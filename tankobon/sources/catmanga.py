@@ -1,7 +1,6 @@
 # coding: utf8
 
 import json
-import re
 
 from .. import core
 
@@ -18,8 +17,7 @@ METADATA_MAP = {
 
 class Manga(core.Manga):
 
-    domain = "catmanga.org"
-    regex = re.compile(r"/series/\w+")
+    domain = r"catmanga.org/series/(\w+)"
 
     @property
     def _data(self):
