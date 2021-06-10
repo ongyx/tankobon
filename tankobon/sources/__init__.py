@@ -1,40 +1,25 @@
 # coding: utf8
 """This directory contains sources for several websites.
 
-Sources are analogous to youtube-dl extractors: they define how to parse out infomation of a manga on a webpage.
+Sources are regular modules that have the following classes:
 
-Sources contain two classes: parsers and searchers.
-Parsers *must* subclass and satisfy the tankobon.manga.Manga interface.
+## `Parser`
 
-Typically, parsers make heavy use of regexes and leverage the BeautifulSoup API through the .soup attribute:
+Subclass of `tankobon.core.Parser`.
 
->>> from tankobon import core
->>>
->>> class MyManga(core.Manga):
-...
-...     # The domain of the website you are going to parse, *without* a 'www' in front.
-...     domain = "my-website.com"
-...
-...     def chapters(self):
-...         chapters = []
-...
-...         for tag in self.soup.find_all("div"):
-...             chapters.append(
-...                 manga.Chapter(
-...                     id=tag.h1.text,
-...                     url=tag.a["href"],
-...                     title=tag.h2.text,
-...                 )
-...             )
-...
-...         return chapters
-...
-...     def pages(self, chapter):
-...         soup = self.soup_from_url(chapter.url)
-...         return [tag["href"] for tag in soup.find_all("a", href=True)]
+`Parser`s must implement the methods `metadata`, `chapters` and `pages`.
+
+It must also have a class attribute `domain`, which is a uncompiled regex pattern of the urls the parser can parse.
+At minimum it should be the base of the url (**without** http(s):// or www. in front):
+
+```python
+domain = r"my-manga-host.com"
+```
 
 When subclassed, the new parser will automatically be registered (as long as it runs, i.e import it).
-The parser will then be delegated to based on the domain name (using urlparse's netloc).
+The parser will then be delegated to based on the domain.
+
+For some examples, take a look at the sources in this directory.
 """
 
 # import to register default sources

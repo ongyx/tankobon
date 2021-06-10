@@ -4,6 +4,7 @@ import collections
 import functools
 import json
 import logging
+import os
 import pathlib
 from typing import Any, Callable
 
@@ -14,7 +15,7 @@ import fpdf  # type: ignore
 import imagesize  # type: ignore
 from natsort import natsorted  # type: ignore
 
-from . import __version__, core, sources  # noqa: F401
+from . import __version__, core, models, sources, utils
 from .exceptions import MangaNotFoundError
 
 click.option: Callable[..., Any] = functools.partial(click.option, show_default=True)  # type: ignore
@@ -25,9 +26,8 @@ VERBOSITY = [
     for level in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
 ]
 
-MANIFEST_PATH = "manifest.json"
-A4_WIDTH = 210
-A4_HEIGHT = 297
+CONFIG = utils.Config()
+LANG = CONFIG["lang"]
 
 
 @click.group()
@@ -36,7 +36,13 @@ A4_HEIGHT = 297
     "-v", "--verbose", "verbosity", help="be more chatty", default=4, count=True
 )
 def cli(verbosity):
-    """Manga browser/downloader."""
+    """Manga browser/downloader.
+
+    Once a manga has been added to tankobon using 'tankobon add <url>',
+    you can refer to it using its shorthash (first 8 characters of its SHA512 hash).
+
+    Executing 'tankobon list' will show the shorthashes of all manga added to tankobon.
+    """
     # set up logger
     coloredlogs.install(
         level=VERBOSITY[verbosity - 1],
@@ -45,9 +51,9 @@ def cli(verbosity):
     )
 
 
-def _pprint(_dict):
+def prettyprint(dict_):
 
-    for key, value in _dict.items():
+    for key, value in dict_.items():
 
         # +2 for the ': ' suffix
         indent = len(key) + 2
@@ -58,125 +64,118 @@ def _pprint(_dict):
         click.echo(f"{key}: {value}\n")
 
 
-def _info_table(manga):
-    table = []
-
-    volumes = collections.defaultdict(list)
-
-    for _, chapter in manga.data.items():
-        volumes[chapter.volume].append(chapter)
-
-    table.append("| volume | chapter | title ")
-    table.append("|--------|---------|-------")
-
-    for volume, chapters in volumes.items():
-        for chapter in chapters:
-            table.append(
-                "| {:<6} | {:<7} | {}".format(
-                    volume or "(empty)",
-                    chapter.id or "(empty)",
-                    chapter.title or "(empty)",
-                )
-            )
-
-    return "\n".join(table), len(volumes), len(manga.data)
-
-
-def _info(manga):
-
-    _pprint(manga.meta.__dict__)
-
-    table, n_vol, n_chapter = _info_table(manga)
-
-    click.echo(table)
-
-    click.echo(
-        f"summary: {n_vol} volume{'s' if n_vol > 1 else ''}, {n_chapter} chapter{'s' if n_chapter > 1 else ''}"
-    )
-
-
-def _load(url, cache):
+def _load(shorthash, cache):
     try:
-        return cache.load(url)
+        return cache.load(cache.fullhash(shorthash))
     except MangaNotFoundError:
         click.echo(
-            f"Manga not found in the cache. Try adding it first with 'tankobon refresh {url}'."
+            f"Manga not found in the cache. Try adding it first with 'tankobon add {shorthash}'."
         )
         raise click.Abort()
 
 
 @cli.command()
-@click.argument("url")
+@click.argument("shorthash")
 @click.option("-c", "--chapter", help="show info only for a specific chapter")
-def info(url, chapter):
-    """Show info on a manga url."""
+def info(shorthash, chapter):
+    """Show info on a manga."""
 
     with core.Cache() as cache:
 
-        manga = _load(url, cache)
-
-        if url not in cache.index:
-            cache.save(manga)
+        manga = _load(shorthash, cache)
 
         if chapter:
-            _pprint(manga.data[chapter].__dict__)
+            prettyprint(manga.chapters[chapter].__dict__)
         else:
-            _info(manga)
+            prettyprint(manga.meta.__dict__)
+
+            click.echo(manga.summary())
+
+            info = manga.info
+
+            click.echo(
+                "summary: "
+                f"{utils.plural(len(info['volumes']), 'volume')}, "
+                f"{utils.plural(info['chapters'], 'chapter')}\n"
+                f"languages: {', '.join(info['langs'])}"
+            )
 
 
 @cli.command("list")
 def _list():
     """List all manga in the cache."""
 
-    _pprint(
-        {"supported websites": [cls.domain.pattern for cls in core.Manga.registered]}
+    prettyprint(
+        {"supported websites": [cls.domain.pattern for cls in core.Parser.registered]}
     )
-
-    click.echo("cached manga:\n")
 
     with core.Cache() as cache:
 
-        if not cache.index:
+        if not cache.data:
             click.echo("(none)")
 
         else:
-            for url, data in cache.index.items():
-                metadata = data["metadata"]
-                print(f"{url}: {metadata['title']} ({metadata['_hash']})")
+            for hash, manga in cache.data.items():
+                meta = manga["meta"]
+
+                print(f"{hash[:core.SHORT_HASH_LEN]}: {meta.title} ({meta.url})")
+
+
+def _refresh(manga):
+    parser = core.Parser.parser(manga.meta.url)
+    parser.add_chapters(manga)
 
 
 @cli.command()
 @click.argument("url")
-def refresh(url, pages):
-    """Create/refresh chapters for a manga by url.
-    You can add manga urls using this command (it will be created if it does not exist).
-    """
+def add(url):
+    """Create a manga by url."""
 
     with core.Cache() as cache:
 
-        if url not in cache.index:
-            click.echo("manga dosen't exist, creating")
-            manga = core.Manga.from_url(url)
+        if url in cache.alias:
+            short_hash = cache.alias[url][: core.SHORT_HASH_LEN]
 
-        else:
-            click.echo("loading existing manga")
-            manga = cache.load(url)
+            click.echo(
+                f"manga already exists (refresh with 'tankobon refresh {short_hash}')"
+            )
+            return
 
-        click.echo("saving changes")
-        cache.save(manga)
+        parser = core.Parser.parser(url)
+        manga = parser.create(url)
+
+        _refresh(manga)
+
+        cache.dump(manga)
+
+        click.echo(
+            f"Sucessfully added '{url}'! It's shorthash is <{manga.meta.hash[:core.SHORT_HASH_LEN]}>."
+        )
 
 
 @cli.command()
-@click.argument("url")
-def delete(url):
-    """Delete a manga by url from the cache."""
+@click.argument("shorthash")
+def refresh(shorthash):
+    """Refresh a manga by shorthash (adds any new chapters)."""
 
     with core.Cache() as cache:
-        cache.delete(url)
+
+        manga = _load(shorthash, cache)
+        _refresh(manga)
+        cache.dump(manga)
 
 
 @cli.command()
-@click.argument("url")
+@click.argument("shorthash")
+def delete(shorthash):
+    """Delete a manga by shorthash from the cache."""
+
+    with core.Cache() as cache:
+        cache.delete(cache.fullhash(shorthash))
+
+
+@cli.command()
+@click.argument("shorthash")
 @click.option(
     "-p",
     "--path",
@@ -185,59 +184,57 @@ def delete(url):
     help="where to download to (must be a folder)",
 )
 @click.option(
-    "-c", "--chapters", help="chapters to download, seperated by ',' (i.e '1,2,3,4')"
+    "-c",
+    "--chapters",
+    "cids",
+    help=(
+        "chapters to download, seperated by ','. "
+        "Ranges are also allowed (i.e '1-5,10' - download chapters 1 to 5 and 10)."
+    ),
 )
-@click.option(
-    "-f",
-    "--force",
-    is_flag=True,
-    help="re-download chapters even if they have already been downloaded",
-)
-def download(url, path, chapters, force):
-    """Download a manga by url."""
+@click.option("-f", "--force", help="redownload existing chapters", default=False)
+def download(shorthash, path, cids, force):
+    """Download a manga by shorthash."""
 
-    try:
-        with (path / MANIFEST_PATH).open() as f:
-            manifest = json.load(f)
-    except FileNotFoundError:
-        manifest = {}
+    cache = core.Cache()
+    parser = core.Parser.parser(shorthash)
+    downloader = core.Downloader(path)
 
-    with core.Cache() as cache:
+    manga = _load(shorthash, cache)
 
-        manga = _load(url, cache)
+    chapters = []
 
-        if chapters is None:
-            if click.confirm(
-                "ALL chapters will be downloaded (this consumes a lot of bandwidth). Are you sure?"
-            ):
-                chapters = list(manga.data)
-        else:
-            chapters = chapters.split(",")
+    if cids is None:
+        if not click.confirm(
+            "ALL chapters will be downloaded (this consumes a lot of bandwidth). Are you sure?"
+        ):
+            raise click.Abort()
 
-        for cid in chapters:
-            click.echo(f"downloading chapter {cid}")
+        for _, langs in manga.chapters.items():
+            chapter = langs.get(LANG)
+            if chapter is not None:
+                chapters.append(chapter)
 
-            if cid in manifest and not force:
-                click.echo(f"chapter {cid} already downloaded, skipping")
-                continue
+    else:
+        for cid in cids.split(","):
+            if "-" in cid:
+                # range of chapters
+                start, end = cid.split("-")
+                chapters.extend(manga[start:end:LANG])
+            else:
+                chapters.append(manga[cid][LANG])
 
-            chapter_path = path / cid
-            chapter_path.mkdir(exist_ok=True)
+    for chapter in chapters:
+        click.echo(f"downloading chapter {chapter.id}")
 
-            try:
-                images = manga.download(cid, chapter_path)
-            except core.PagesNotFoundError:
-                click.echo(
-                    f"Pages for chapter {cid} not found. Try running 'tankobon refresh -p {url}' first."
-                )
-                raise click.Abort()
+        if not chapter.pages:
+            click.echo(f"chapter {chapter.id} does not have any pages, adding")
+            parser.add_pages(chapter)
 
-            manifest[cid] = natsorted(
-                [str(i.relative_to(chapter_path)) for i in images]
-            )
+        downloader.download(chapter, force=force)
 
-    with (path / MANIFEST_PATH).open("w") as f:
-        json.dump(manifest, f, indent=4)
+    cache.close()
+    downloader.close()
 
 
 @cli.command()
@@ -245,7 +242,6 @@ def download(url, path, chapters, force):
     "-p",
     "--path",
     default=".",
-    type=pathlib.Path,
     help="manga folder to make a pdf for",
 )
 @click.option(
@@ -254,45 +250,19 @@ def download(url, path, chapters, force):
 @click.option(
     "-o",
     "--output",
-    type=pathlib.Path,
     default="export.pdf",
     help="where to save the pdf",
 )
 def pdfify(path, chapters, output):
-    """Create a (single) pdf file for several or more chapters of a downloade manga."""
+    """Create a (single) pdf file for all chapters of a downloaded manga."""
 
-    try:
-        with (path / MANIFEST_PATH).open() as f:
-            manifest = json.load(f)
-    except FileNotFoundError:
-        click.echo(
-            "Can't seem to find the manifest file. Did you download the manga to another folder?"
-        )
-        raise click.Abort()
+    with core.Downloader(path) as downloader:
+        if chapters is None:
+            chapters = list(downloader.manifest.keys())
+        else:
+            chapters = chapters.split(",")
 
-    if chapters is None:
-        chapters = list(manifest.keys())
-    else:
-        chapters = chapters.split(",")
-
-    document = fpdf.FPDF()
-
-    for cid in natsorted(chapters):
-        click.echo(f"adding chapter {cid}")
-
-        chapter = manifest[cid]
-        total = len(chapter) - 1
-        for page in natsorted(chapter):
-            click.echo(f"adding page {page} of {total}")
-            page_path = path / cid / page
-
-            width, height = imagesize.get(page_path)
-            ratio = min(A4_WIDTH / width, A4_HEIGHT / height)
-
-            document.add_page()
-            document.image(str(page_path), 0, 0, w=width * ratio, h=height * ratio)
-
-    document.output(str(path / output), "F")
+        downloader.pdfify(chapters, output, lang=LANG)
 
 
 @cli.command("gui")

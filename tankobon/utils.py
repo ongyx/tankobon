@@ -1,13 +1,17 @@
 # coding: utf8
 """Utilities for tankobon."""
 
+import collections
+import json
 import logging
+import os
 import pathlib
 import re
 from typing import Optional, Union
 from urllib.parse import urlparse
 
 import bs4  # type: ignore
+import fake_useragent as ua  # type: ignore
 import filetype  # type: ignore
 import requests
 
@@ -15,12 +19,18 @@ Number = Union[int, float]
 
 _log = logging.getLogger("tankobon")
 
-# Downloader config
-BSOUP_PARSER = "html5lib"  # if you want, change to lxml for faster parsing
-TIMEOUT = 15
-COOLDOWN = 2
+BS4_PARSER = "html5lib"  # if you want, change to lxml for faster parsing
+USER_AGENT = ua.UserAgent()
 
 RE_DOMAIN = re.compile(r"^(?:www\.)?(.*)(:(\d+))?$")
+
+# all config/cache files are stored here.
+ROOT = pathlib.Path.home() / ".local" / "share" / "tankobon"
+ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def plural(n_items, noun):
+    return f"{n_items} {noun}{'s' if n_items > 1 else ''}"
 
 
 def filesize(content: bytes) -> str:
@@ -57,37 +67,25 @@ def sanitize(name: str) -> str:
     return re.sub("_{2,}", "_", sanitised).strip("_")
 
 
-def get_soup(
-    *args,
-    encoding: Optional[str] = None,
-    parser: str = BSOUP_PARSER,
-    session: Optional[requests.Session] = None,
-    **kwargs,
+def soup(
+    url: str, *args, session: Optional[requests.Session] = None, **kwargs
 ) -> bs4.BeautifulSoup:
     """Get a url as a BeautifulSoup.
 
     Args:
-        *args: See get_url.
-        encoding: The encoding to decode.
-            Defaults to the autodetected encoding (by requests).
-        parser: The parser to use.
-            Must be 'html.parser', 'html5lib' or 'lxml'.
+        url: The url to get a soup from.
+        *args: Passed to session.get().
         session: The session to use to download the soup.
             Defaults to None.
-        **kwargs: See get_url.
+        **kwargs: Passed to session.get().
     """
 
-    if session is not None:
-        response = session.get(*args, **kwargs)
-    else:
-        response = requests.get(*args, **kwargs)
+    if session is None:
+        session = requests.Session()
 
-    if encoding is not None:
-        html_text = response.content.decode(encoding)
-    else:
-        html_text = response.text
+    response = session.get(url, *args, **kwargs)
 
-    return bs4.BeautifulSoup(html_text, parser)
+    return bs4.BeautifulSoup(response.text, BS4_PARSER)
 
 
 def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.Path:
@@ -111,11 +109,6 @@ def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.
     return path
 
 
-class TimedSession(requests.Session):
-    def get(self, *args, **kwargs):
-        return super().get(*args, timeout=TIMEOUT, **kwargs)
-
-
 def is_url(url: str) -> bool:
     """Check whether or not a string is a url."""
     result = urlparse(url)
@@ -133,3 +126,84 @@ def parse_domain(url: str) -> str:
     """
 
     return RE_DOMAIN.findall(urlparse(url).netloc)[0][0]
+
+
+class UserSession(requests.Session):
+    """requests.Session with randomised user agent in the headers."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.headers.update({"User-Agent": USER_AGENT.random})
+
+
+class PersistentDict(collections.UserDict):
+    """A UserDict that can be loaded and dumped to disk persistently.
+    (As long as the dictionary contents can be serialised to JSON.)
+
+    Usage:
+
+    ```python
+    from tankobon.utils import PersistentDict
+
+    file = "test.json"
+
+    with PersistentDict(file) as d:
+        d["foo"] = "bar"
+
+    # '/where/to/save.json' now looks like this:
+    # {
+    #     "foo": "bar"
+    # }
+
+    # It can also be used without a context manager.
+    # Just remember to close() it, or any changes won't be written to disk!
+
+    d = PersistentDict(file)
+    d["baz"] = 42
+    d.close()
+    ```
+    """
+
+    def __init__(self, path: Union[str, pathlib.Path], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+
+        self.path = path
+
+        try:
+            with self.path.open() as f:
+                self.data.update(json.load(f))
+
+        except FileNotFoundError:
+            pass
+
+    def close(self):
+        with self.path.open("w") as f:
+            json.dump(self.data, f, indent=2)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, t, v, tb):
+        self.close()
+
+
+class Config(PersistentDict):
+
+    CONFIG = "config.json"
+    DEFAULTS = {"lang": "en"}
+
+    def __init__(self, path: Optional[pathlib.Path] = None):
+        if path is None:
+            path = ROOT / self.CONFIG
+
+        super().__init__(path, **self.DEFAULTS)
+
+    def __getitem__(self, key):
+        if key not in self:
+            super().__setitem__(key, os.environ[f"TANKOBON_{key.upper()}"])
+
+        return super().__getitem__(key)

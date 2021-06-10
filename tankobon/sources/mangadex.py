@@ -2,10 +2,10 @@
 
 import MangaDexPy  # type: ignore
 
-from .. import core
+from .. import core, models
 
 
-class Manga(core.Manga):
+class Parser(core.Parser):
 
     # mangadex has no website frontend yet, match base url plus manga id
     domain = r"mangadex\.org/([a-fA-F0-9\-]+)"
@@ -13,66 +13,60 @@ class Manga(core.Manga):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._chapters = {}
-
-        manga_id = self.domain.search(self.meta.url).group(1)
-
         self.client = MangaDexPy.MangaDex()
-        self.manga = self.client.get_manga(manga_id)
+        self._cache = {}
 
-    def metadata(self):
+    def _get_manga(self, url):
+        manga_id = self.domain.search(url).group(1)
+
+        if manga_id not in self._cache:
+            self._cache[manga_id] = self.client.get_manga(manga_id)
+
+        return self._cache[manga_id]
+
+    def metadata(self, url):
+        manga = self._get_manga(url)
 
         alt_titles = []
 
-        for alt_title in self.manga.titles:
+        for alt_title in manga.titles:
             alt_titles.extend(alt_title.values())
 
         authors = []
 
         # NOTE: array keys must have brackets '[]'!
-        for author in self.client.search("author", params={"ids[]": self.manga.author}):
+        for author in self.client.search("author", params={"ids[]": manga.author}):
             authors.append(author.name)
 
-        return core.Metadata(
-            url=self.meta.url,
-            title=self.manga.title["en"],
+        return models.Metadata(
+            url=url,
+            title=manga.title["en"],
             alt_titles=alt_titles,
             authors=authors,
-            genres=[t.name["en"] for t in self.manga.tags],
-            desc=self.manga.desc["en"],
-            cover=self.client.get_cover(self.manga.cover).url,
+            genres=[t.name["en"] for t in manga.tags],
+            desc=manga.desc["en"],
+            cover=self.client.get_cover(manga.cover).url,
         )
 
-    def chapters(self):
-        for chapter in self.manga.get_chapters():
+    def add_chapters(self, manga):
+        manga_resp = self._get_manga(manga.meta.url)
+
+        for chapter in manga_resp.get_chapters():
 
             # FIXME: il8n?
             if chapter.language == "en":
 
-                # store the MangaDex chapter by its id
-                self._chapters[chapter.chapter] = chapter
-
-                yield core.Chapter(
-                    id=chapter.chapter,
-                    # unused
-                    url="",
-                    title=chapter.title,
-                    volume=chapter.volume,
+                manga.add(
+                    models.Chapter(
+                        id=chapter.chapter,  # the chapter number
+                        # unused
+                        url=chapter.id,  # the mangadex chapter UUID
+                        title=chapter.title,
+                        volume=chapter.volume,
+                    )
                 )
 
-    def pages(self, chapter):
-        if chapter.id not in self._chapters:
-            chapter_obj = self.client.search(
-                "chapter",
-                params={
-                    "chapter": chapter.id,
-                    "translatedLanguage[]": ["en"],
-                    "manga": self.manga.id,
-                },
-            )[0]
-        else:
-            chapter_obj = self._chapters[chapter.id]
+    def add_pages(self, chapter):
+        net_chapter = self.client.get_chapter(chapter.url).get_md_network()
 
-        net_chapter = chapter_obj.get_md_network()
-
-        return net_chapter.pages
+        chapter.pages = net_chapter.pages

@@ -1,126 +1,70 @@
 # Table of Contents
 
 * [tankobon.core](#tankobon.core)
-  * [Metadata](#tankobon.core.Metadata)
-    * [parsed](#tankobon.core.Metadata.parsed)
-  * [Chapter](#tankobon.core.Chapter)
-  * [Manga](#tankobon.core.Manga)
-    * [parser](#tankobon.core.Manga.parser)
-    * [from\_url](#tankobon.core.Manga.from_url)
-    * [import\_dict](#tankobon.core.Manga.import_dict)
-    * [export\_dict](#tankobon.core.Manga.export_dict)
-    * [refresh](#tankobon.core.Manga.refresh)
-    * [select](#tankobon.core.Manga.select)
-    * [soup\_from\_url](#tankobon.core.Manga.soup_from_url)
-    * [download](#tankobon.core.Manga.download)
-    * [download\_cover](#tankobon.core.Manga.download_cover)
-    * [total](#tankobon.core.Manga.total)
-    * [metadata](#tankobon.core.Manga.metadata)
-    * [chapters](#tankobon.core.Manga.chapters)
-    * [pages](#tankobon.core.Manga.pages)
+  * [Parser](#tankobon.core.Parser)
+    * [create](#tankobon.core.Parser.create)
+    * [parser](#tankobon.core.Parser.parser)
+    * [metadata](#tankobon.core.Parser.metadata)
+    * [add\_chapters](#tankobon.core.Parser.add_chapters)
+    * [add\_pages](#tankobon.core.Parser.add_pages)
+    * [soup](#tankobon.core.Parser.soup)
   * [Cache](#tankobon.core.Cache)
-    * [save](#tankobon.core.Cache.save)
+    * [fullhash](#tankobon.core.Cache.fullhash)
+    * [dump](#tankobon.core.Cache.dump)
     * [load](#tankobon.core.Cache.load)
     * [delete](#tankobon.core.Cache.delete)
+  * [Downloader](#tankobon.core.Downloader)
+    * [download](#tankobon.core.Downloader.download)
+    * [pdfify](#tankobon.core.Downloader.pdfify)
 * [tankobon.utils](#tankobon.utils)
   * [filesize](#tankobon.utils.filesize)
   * [sanitize](#tankobon.utils.sanitize)
-  * [get\_soup](#tankobon.utils.get_soup)
+  * [soup](#tankobon.utils.soup)
   * [save\_response](#tankobon.utils.save_response)
   * [is\_url](#tankobon.utils.is_url)
   * [parse\_domain](#tankobon.utils.parse_domain)
+  * [UserSession](#tankobon.utils.UserSession)
+  * [PersistentDict](#tankobon.utils.PersistentDict)
 
 <a name="tankobon.core"></a>
 # tankobon.core
 
 Core functionality of tankobon.
 
-<a name="tankobon.core.Metadata"></a>
-## Metadata Objects
+<a name="tankobon.core.Parser"></a>
+## Parser Objects
 
 ```python
-@dataclass
-class Metadata()
+class Parser(abc.ABC)
 ```
 
-Helper class to store manga metadata.
+<a name="tankobon.core.Parser.create"></a>
+#### create
+
+```python
+ | create(url: str) -> models.Manga
+```
+
+Create a new manga.
 
 **Arguments**:
 
-- `url` - The url to the manga title page.
-- `title` - The manga name in English (romanized/translated).
-- `alt_titles` - A list of alternative names for the manga.
-  i.e in another language, original Japanese name, etc.
-- `authors` - A list of author names.
-- `genres` - A list of catagories the manga belongs to.
-  i.e shounen, slice_of_life, etc.
-  Note that the catagories are sanitised using utils.sanitise() on initalisation.
-- `desc` - The sypnosis (human-readable info) of the manga.
-- `cover` - The url to the manga cover page (must be an image).
-
-<a name="tankobon.core.Metadata.parsed"></a>
-#### parsed
-
-```python
- | parsed()
-```
-
-Check whether the metadata fields has been partially/totally filled.
-
-<a name="tankobon.core.Chapter"></a>
-## Chapter Objects
-
-```python
-@dataclass
-class Chapter()
-```
-
-A manga chapter.
-
-**Arguments**:
-
-- `id` - The chapter id as a string (i.e 1, 2, 10a, etc.).
-- `url` - The chapter url.
-- `title` - The chapter name.
-- `volume` - The volume the chapter belongs to.
-- `pages` - A list of image urls to the chapter pages.
-
-<a name="tankobon.core.Manga"></a>
-## Manga Objects
-
-```python
-class Manga(abc.ABC)
-```
-
-A manga hosted somewhere online.
-
-**Attributes**:
-
-- `data` - A map of chapter id to the Chapter object.
-- `domain` - The name of the manga host website, i.e 'mangadex.org'.
-  This **must** be set in any derived subclasses like so:
+- `url` - The manga url.
   
-  class MyManga(Manga):
-  domain = 'mymanga.com'
-  ...
-  
-- `hash` - A MD5 checksum of the manga title + url.
-  This can be used to uniquely identify manga.
-- `meta` - The manga metadata as a Metadata object.
-- `registered` - A map of subclass domain to the subclass itself.
-  Subclasses can then be delegated to depending on a url's domain.
-- `session` - The requests.Session used to download soups.
-- `soup` - The BeautifulSoup of the manga title page.
 
-<a name="tankobon.core.Manga.parser"></a>
+**Returns**:
+
+  A Manga object.
+
+<a name="tankobon.core.Parser.parser"></a>
 #### parser
 
 ```python
  | @classmethod
- | parser(cls, url: str)
+ | parser(cls, url: str) -> Parser
 ```
 
-Get the appropiate subclass for the domain in url.
+Get the appropiate parser subclass for the domain in url.
 
 **Arguments**:
 
@@ -129,217 +73,148 @@ Get the appropiate subclass for the domain in url.
 
 **Returns**:
 
-  The subclass that can be used to parse the url.
+  The subclass instance that can be used to parse the url.
   
 
 **Raises**:
 
   UnknownDomainError, if there is no registered subclass for the url domain.
 
-<a name="tankobon.core.Manga.from_url"></a>
-#### from\_url
-
-```python
- | @classmethod
- | from_url(cls, url: str) -> Manga
-```
-
-Parse a url into a Manga object.
-The appropiate subclass will be selected based on the url domain.
-
-**Arguments**:
-
-- `url` - The url to parse.
-  
-
-**Returns**:
-
-  The parsed Manga object.
-
-<a name="tankobon.core.Manga.import_dict"></a>
-#### import\_dict
-
-```python
- | @classmethod
- | import_dict(cls, data: Dict[str, Any]) -> Manga
-```
-
-Import manga data.
-
-**Arguments**:
-
-- `data` - The previously exported data from export_dict().
-
-<a name="tankobon.core.Manga.export_dict"></a>
-#### export\_dict
-
-```python
- | export_dict() -> Dict[str, Any]
-```
-
-Export the manga data.
-The dict can be saved to disk and loaded back later using import_dict().
-
-**Returns**:
-
-  The manga data as a dict.
-
-<a name="tankobon.core.Manga.refresh"></a>
-#### refresh
-
-```python
- | refresh(pages: bool = False, *, progress: Optional[Callable[[str], None]] = None)
-```
-
-Refresh the list of chapters available.
-
-**Arguments**:
-
-- `pages` - Whether or not to parse the pages for any new chapters.
-  Defaults to False (may take up a lot of bandwidth for many chapters).
-- `progress` - A callback function called with the chapter id every time it is parsed.
-  Defaults to None.
-
-<a name="tankobon.core.Manga.select"></a>
-#### select
-
-```python
- | select(start: str, end: str) -> List[str]
-```
-
-Select chapter ids from the start id to the end id.
-The ids are sorted first.
-
-**Arguments**:
-
-- `start` - The start chapter id.
-- `end` - The end chapter id.
-  
-
-**Returns**:
-
-  A list of all chapter ids between start and end (inclusive of start and end).
-
-<a name="tankobon.core.Manga.soup_from_url"></a>
-#### soup\_from\_url
-
-```python
- | soup_from_url(url: str) -> bs4.BeautifulSoup
-```
-
-Retreive a url and create a soup using its content.
-
-<a name="tankobon.core.Manga.download"></a>
-#### download
-
-```python
- | download(cid: str, to: Union[str, pathlib.Path], *, progress: Optional[Callable[[int], None]] = None) -> List[pathlib.Path]
-```
-
-Download a chapter's pages to a folder.
-
-**Arguments**:
-
-- `cid` - The chapter id to download.
-- `to` - The folder to download the pages to.
-- `progress` - A callback function which is called with the page number every time a page is downloaded.
-  Defaults to None.
-  
-
-**Returns**:
-
-  A list of absolute paths to the downloaded pages in ascending order
-  (1.png, 2.png, 3.png, etc.)
-  
-
-**Raises**:
-
-  PagesNotFoundError, if the chapter's pages have not been parsed yet.
-  To avoid this, .refresh(pages=True) should be called at least once.
-
-<a name="tankobon.core.Manga.download_cover"></a>
-#### download\_cover
-
-```python
- | download_cover() -> requests.Response
-```
-
-Download the manga cover.
-The manga cover url must be valid.
-
-**Returns**:
-
-  The requests.Response of the manga cover url.
-
-<a name="tankobon.core.Manga.total"></a>
-#### total
-
-```python
- | total() -> int
-```
-
-Return the total number of pages in this manga.
-All the chapter pages must have already been parsed.
-
-<a name="tankobon.core.Manga.metadata"></a>
+<a name="tankobon.core.Parser.metadata"></a>
 #### metadata
 
 ```python
  | @abc.abstractmethod
- | metadata() -> Metadata
+ | metadata(url: str) -> models.Metadata
 ```
 
-Parse metadata from the manga title page.
-
-**Returns**:
-
-  A Metadata object.
-
-<a name="tankobon.core.Manga.chapters"></a>
-#### chapters
-
-```python
- | @abc.abstractmethod
- | chapters() -> Generator[Chapter, None, None]
-```
-
-Parse chapter info from the manga title page.
-
-**Yields**:
-
-  A Chapter object for each chapter in the manga.
-
-<a name="tankobon.core.Manga.pages"></a>
-#### pages
-
-```python
- | @abc.abstractmethod
- | pages(chapter: Chapter) -> List[str]
-```
-
-Parse pages (images of the manga) from the manga chapter page.
+Parse metadata for a manga url.
 
 **Arguments**:
 
-- `chapter` - The Chapter object to parse for.
+- `url` - The manga url.
   
 
 **Returns**:
 
-  A list of urls to the chapter pages (must be images).
+  The Metadata object.
+
+<a name="tankobon.core.Parser.add_chapters"></a>
+#### add\_chapters
+
+```python
+ | @abc.abstractmethod
+ | add_chapters(manga: models.Manga)
+```
+
+Add chapters to the manga.
+
+This method should add every chapter in the manga as a Chapter object:
+
+
+Only the 'url' and 'id' args are required when creating a Chapter.
+The other fields are optional and have default values (see `help(tankobon.models.Chapter)`).
+
+```python
+def chapters(self, manga):
+    for ... in ...:
+        # do your parsing here
+        manga.add(Chapter(...))
+```
+
+**Arguments**:
+
+- `manga` - The manga object.
+
+<a name="tankobon.core.Parser.add_pages"></a>
+#### add\_pages
+
+```python
+ | @abc.abstractmethod
+ | add_pages(chapter: models.Chapter)
+```
+
+Add pages to the chapter in the manga as a list of urls.
+The pages must be in ascending order.
+
+This method should assign pages to the chapter:
+
+
+```python
+def pages(self, chapter):
+    # do your parsing here
+    chapter.pages = [...]  # assign directly to the chapter's pages.
+```
+
+**Arguments**:
+
+- `chapter` - The chapter object (already added to the manga).
+
+<a name="tankobon.core.Parser.soup"></a>
+#### soup
+
+```python
+ | soup(url: str) -> bs4.BeautifulSoup
+```
+
+Get a soup from a url.
+
+**Arguments**:
+
+- `url` - The url to get a soup from.
+  
+
+**Returns**:
+
+  The soup of the url.
 
 <a name="tankobon.core.Cache"></a>
 ## Cache Objects
 
 ```python
-class Cache()
+class Cache(utils.PersistentDict)
 ```
 
-<a name="tankobon.core.Cache.save"></a>
-#### save
+A manga cache.
+
+**Arguments**:
+
+- `root` - The root of the cache.
+  
+
+**Attributes**:
+
+- `root` - See args.
+- `alias` - A map of manga url to manga hash.
+
+<a name="tankobon.core.Cache.fullhash"></a>
+#### fullhash
 
 ```python
- | save(manga: Manga, cover: bool = False)
+ | fullhash(part: str) -> str
+```
+
+Get the full SHA512 hash of a manga when only given at least the first 8 letters of the hash.
+
+**Arguments**:
+
+- `part` - The first 8 letters of the hash.
+  
+
+**Returns**:
+
+  The full hash, or an empty string if part was not found.
+  
+
+**Raises**:
+
+  ValueError, if the length part is less than 8.
+
+<a name="tankobon.core.Cache.dump"></a>
+#### dump
+
+```python
+ | dump(manga: models.Manga)
 ```
 
 Save this manga within the cache.
@@ -347,21 +222,19 @@ Save this manga within the cache.
 **Arguments**:
 
 - `manga` - The manga object to save.
-- `cover` - Whether or not to save the cover to the cache (if the cover url exists).
-  Defaults to False.
 
 <a name="tankobon.core.Cache.load"></a>
 #### load
 
 ```python
- | load(url: str)
+ | load(hash: str) -> models.Manga
 ```
 
-Load a manga by url.
+Load a manga by its hash.
 
 **Arguments**:
 
-- `url` - The manga url.
+- `hash` - The manga hash.
   
 
 **Returns**:
@@ -377,19 +250,72 @@ Load a manga by url.
 #### delete
 
 ```python
- | delete(url: str)
+ | delete(hash: str)
 ```
 
 Delete a manga from the cache.
 
 **Arguments**:
 
-- `url` - The manga url.
+- `hash` - The manga hash.
   
 
 **Raises**:
 
   MangaNotFoundError, if the manga does not exist in the cache.
+
+<a name="tankobon.core.Downloader"></a>
+## Downloader Objects
+
+```python
+class Downloader()
+```
+
+A manga downloader.
+
+**Arguments**:
+
+- `path` - The path to where the manga chapters will be downloaded.
+  For every manga chapter, a corrosponding folder is created if it does not exist.
+
+<a name="tankobon.core.Downloader.download"></a>
+#### download
+
+```python
+ | download(chapter: models.Chapter, *, force: bool = False, progress: Optional[Callable[[int], None]] = None)
+```
+
+Download pages for a chapter.
+
+**Arguments**:
+
+- `chapter` - The Chapter object to download.
+- `force` - Whether or not to re-download the chapter if it already exists.
+  Defaults to False.
+- `progress` - A callback function which is called with the page number every time a page is downloaded.
+  Defaults to None.
+  
+
+**Raises**:
+
+  PagesNotFoundError, if the chapter to be downloaded has no pages.
+
+<a name="tankobon.core.Downloader.pdfify"></a>
+#### pdfify
+
+```python
+ | pdfify(chapters: List[str], dest: Union[str, pathlib.Path], lang: str = "en")
+```
+
+Create a PDF out of several (downloaded) chapters.
+The PDF will be A4 sized (vertical).
+
+**Arguments**:
+
+- `chapters` - The chapters to create a PDF for.
+- `lang` - The language of the chapters.
+  Defaults to 'en'.
+- `dest` - Where to write the PDF to.
 
 <a name="tankobon.utils"></a>
 # tankobon.utils
@@ -430,25 +356,22 @@ Sanitise a name so it can be used as a filename.
 
   The sanitised name as a string.
 
-<a name="tankobon.utils.get_soup"></a>
-#### get\_soup
+<a name="tankobon.utils.soup"></a>
+#### soup
 
 ```python
-get_soup(*args, *, encoding: Optional[str] = None, parser: str = BSOUP_PARSER, session: Optional[requests.Session] = None, **kwargs, ,) -> bs4.BeautifulSoup
+soup(url: str, *args, *, session: Optional[requests.Session] = None, **kwargs) -> bs4.BeautifulSoup
 ```
 
 Get a url as a BeautifulSoup.
 
 **Arguments**:
 
-- `*args` - See get_url.
-- `encoding` - The encoding to decode.
-  Defaults to the autodetected encoding (by requests).
-- `parser` - The parser to use.
-  Must be 'html.parser', 'html5lib' or 'lxml'.
+- `url` - The url to get a soup from.
+- `*args` - Passed to session.get().
 - `session` - The session to use to download the soup.
   Defaults to None.
-- `**kwargs` - See get_url.
+- `**kwargs` - Passed to session.get().
 
 <a name="tankobon.utils.save_response"></a>
 #### save\_response
@@ -495,4 +418,46 @@ Parse out a url's domain.
 **Returns**:
 
   The domain.
+
+<a name="tankobon.utils.UserSession"></a>
+## UserSession Objects
+
+```python
+class UserSession(requests.Session)
+```
+
+requests.Session with randomised user agent in the headers.
+
+<a name="tankobon.utils.PersistentDict"></a>
+## PersistentDict Objects
+
+```python
+class PersistentDict(collections.UserDict)
+```
+
+A UserDict that can be loaded and dumped to disk persistently.
+(As long as the dictionary contents can be serialised to JSON.)
+
+Usage:
+
+```python
+from tankobon.utils import PersistentDict
+
+file = "test.json"
+
+with PersistentDict(file) as d:
+    d["foo"] = "bar"
+
+# '/where/to/save.json' now looks like this:
+# {
+#     "foo": "bar"
+# }
+
+# It can also be used without a context manager.
+# Just remember to close() it, or any changes won't be written to disk!
+
+d = PersistentDict(file)
+d["baz"] = 42
+d.close()
+```
 
