@@ -18,6 +18,7 @@ Currently, the following websites are supported:
 
 - `catmanga.org`
 - `mangakakalot.com`
+- `mangadex.org`
 
 ## Versioning Change
 
@@ -60,10 +61,21 @@ What it can't do:
 
 - Show manga pages (pdf reader?)
 
+## Note on mangadex
+
+Since mangadex's frontend isn't really done yet, manga hosted there do not have a 'public' url yet.
+To add a mangadex manga, the url must look like this:
+
+```
+https://mangadex.org/(manga uuid)
+```
+
 ## Todo
 
-- [ ] tests and docs (docs done)
+- [x] tests and docs (docs done)
 - [x] create GUI to make downloading easier, like youtube-DLG
+- [ ] Add user configuration to select another language
+- [ ] `Searcher` class (to search for manga?)
 
 ## Install
 
