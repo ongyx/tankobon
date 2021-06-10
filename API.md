@@ -15,7 +15,20 @@
     * [delete](#tankobon.core.Cache.delete)
   * [Downloader](#tankobon.core.Downloader)
     * [download](#tankobon.core.Downloader.download)
+    * [download\_cover](#tankobon.core.Downloader.download_cover)
     * [pdfify](#tankobon.core.Downloader.pdfify)
+* [tankobon.models](#tankobon.models)
+  * [Metadata](#tankobon.models.Metadata)
+  * [Chapter](#tankobon.models.Chapter)
+  * [Manga](#tankobon.models.Manga)
+    * [add](#tankobon.models.Manga.add)
+    * [remove](#tankobon.models.Manga.remove)
+    * [exists](#tankobon.models.Manga.exists)
+    * [dump](#tankobon.models.Manga.dump)
+    * [load](#tankobon.models.Manga.load)
+    * [summary](#tankobon.models.Manga.summary)
+    * [select](#tankobon.models.Manga.select)
+    * [parsed](#tankobon.models.Manga.parsed)
 * [tankobon.utils](#tankobon.utils)
   * [filesize](#tankobon.utils.filesize)
   * [sanitize](#tankobon.utils.sanitize)
@@ -300,6 +313,19 @@ Download pages for a chapter.
 
   PagesNotFoundError, if the chapter to be downloaded has no pages.
 
+<a name="tankobon.core.Downloader.download_cover"></a>
+#### download\_cover
+
+```python
+ | download_cover(manga: models.Manga)
+```
+
+Download a manga's cover to the download path as 'cover.(ext)'.
+
+**Arguments**:
+
+- `manga` - The manga to download a cover for.
+
 <a name="tankobon.core.Downloader.pdfify"></a>
 #### pdfify
 
@@ -316,6 +342,243 @@ The PDF will be A4 sized (vertical).
 - `lang` - The language of the chapters.
   Defaults to 'en'.
 - `dest` - Where to write the PDF to.
+
+<a name="tankobon.models"></a>
+# tankobon.models
+
+Model classes.
+
+<a name="tankobon.models.Metadata"></a>
+## Metadata Objects
+
+```python
+@dataclass
+class Metadata()
+```
+
+Metadata for a manga.
+
+**Arguments**:
+
+- `url` - The url to the manga title page.
+- `title` - The manga name in English (romanized/translated).
+- `alt_titles` - A list of alternative names for the manga.
+  i.e in another language, original Japanese name, etc.
+- `desc` - The sypnosis (human-readable info) of the manga.
+- `cover` - The url to the manga cover page (must be an image).
+- `authors` - A list of author names.
+- `genres` - A list of catagories the manga belongs to.
+  i.e shounen, slice_of_life, etc.
+  Note that the catagories are sanitised using utils.sanitise() on initalisation.
+- `other` - Miscellanious map of keys to values.
+  May be used by parsers to store parser-specific info (keep state).
+  
+
+**Attributes**:
+
+- `hash` - A SHA-256 checksum of the manga url.
+  (Can be used for filename-safe manga storage.)
+
+<a name="tankobon.models.Chapter"></a>
+## Chapter Objects
+
+```python
+@dataclass
+class Chapter()
+```
+
+A manga chapter.
+
+**Arguments**:
+
+- `id` - The chapter id as a string (i.e 1, 2, 10a, etc.).
+- `url` - The chapter url.
+- `title` - The chapter name.
+- `volume` - The volume the chapter belongs to.
+- `lang` - The ISO 639-1 language code that this chapter was translated to.
+- `pages` - A list of image urls to the chapter pages.
+- `other` - Miscellanious map of keys to values.
+  May be used by parsers to store parser-specific info (keep state).
+
+<a name="tankobon.models.Manga"></a>
+## Manga Objects
+
+```python
+class Manga()
+```
+
+A manga.
+
+Selecting chapters in this manga can be done by slicing:
+
+manga[start_cid:end_cid:lang]  # returns a list of Chapter objects
+
+where start_cid is the first chapter of the selection, and end_cid is the last chapter of the selection.
+lang is the ISO 639-1 language code of the chapters to select. i.e:
+
+# Select chapters 1 to 5 in the Spanish language (inclusive of chapter 5).
+# NOTE: If the chapter does not have a translation for the selected language,
+# the number of chapters you get may not be the number requested!
+chapters = manga["1":"5":"es"]
+
+**Arguments**:
+
+- `meta` - The manga metadata.
+- `chapters` - The manga chapters.
+  
+
+**Attributes**:
+
+- `chapters` - A map of chapter ids to a map of ISO 639-1 language codes to Chapter objects (chapters may have several languages):
+  
+  {
+  // chapter id
+- `"1"` - {
+  // ISO 639-1 language code
+- `"en"` - Chapter(...)
+  }
+  }
+  
+- `info` - A dictionary which has the following keys:
+  
+  chapters (int)
+  The total number of chapters across all languages.
+  
+  volumes (set)
+  The volumes that this manga has across all languages.
+  
+  langs (set)
+  ISO 639-1 language codes that this manga was translated to.
+  Note that chapters may not have a translation for all language codes.
+
+<a name="tankobon.models.Manga.add"></a>
+#### add
+
+```python
+ | add(chapter: Chapter)
+```
+
+Add a chapter to this manga.
+The chapter will not be added if it already exists (has the same id and lang as the existing one).
+
+**Arguments**:
+
+- `chapter` - The chapter to add.
+
+<a name="tankobon.models.Manga.remove"></a>
+#### remove
+
+```python
+ | remove(cid: str, lang: str = "en") -> Chapter
+```
+
+Remove a chapter from this manga.
+
+**Arguments**:
+
+- `cid` - The chapter id to remove.
+- `lang` - The chapter language to remove.
+  Defaults to 'en'.
+  
+
+**Returns**:
+
+  The removed chapter.
+
+<a name="tankobon.models.Manga.exists"></a>
+#### exists
+
+```python
+ | exists(chapter: Chapter) -> bool
+```
+
+Check whether a chapter already exists in this manga.
+
+**Arguments**:
+
+- `chapter` - The chapter object.
+  
+
+**Returns**:
+
+  True if it exists, otherwise False.
+
+<a name="tankobon.models.Manga.dump"></a>
+#### dump
+
+```python
+ | dump() -> dict
+```
+
+Serialise this manga to a dict.
+
+<a name="tankobon.models.Manga.load"></a>
+#### load
+
+```python
+ | @classmethod
+ | load(cls, data: dict) -> Manga
+```
+
+Deserialise this manga from a dict.
+
+**Arguments**:
+
+- `data` - The serialised manga.
+  
+
+**Returns**:
+
+  The Manga object.
+
+<a name="tankobon.models.Manga.summary"></a>
+#### summary
+
+```python
+ | summary(lang: str = "en") -> str
+```
+
+Create a Markdown table summary of all volumes and chapters in this manga.
+
+**Arguments**:
+
+- `lang` - The language to summerise for.
+  
+
+**Returns**:
+
+  The Markdown table as a string.
+
+<a name="tankobon.models.Manga.select"></a>
+#### select
+
+```python
+ | select(cids: str, lang: str = "en") -> List[Chapter]
+```
+
+Select chapters from this manga.
+
+**Arguments**:
+
+- `cids` - A list of chapter ids as a string, delimited by a comma.
+  Ranges are also valid (1-5).
+  i.e '1,3,5,8-10' (select chapters 1,3,5 and 8-10 inclusive of 10).
+- `lang` - The language of the chapters.
+  Note that if a chapter does not have the language requested, it will be skipped.
+  
+
+**Returns**:
+
+  A list of Chapter objects.
+
+<a name="tankobon.models.Manga.parsed"></a>
+#### parsed
+
+```python
+ | parsed() -> bool
+```
+
+Check whether this manga has been parsed (has at least one chapter).
 
 <a name="tankobon.utils"></a>
 # tankobon.utils

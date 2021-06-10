@@ -1,21 +1,14 @@
 # coding: utf8
 
-import collections
 import functools
-import json
 import logging
-import os
 import pathlib
 from typing import Any, Callable
 
 import click
 import coloredlogs  # type: ignore
 
-import fpdf  # type: ignore
-import imagesize  # type: ignore
-from natsort import natsorted  # type: ignore
-
-from . import __version__, core, models, sources, utils
+from . import __version__, core, sources, utils  # noqa: F401
 from .exceptions import MangaNotFoundError
 
 click.option: Callable[..., Any] = functools.partial(click.option, show_default=True)  # type: ignore
@@ -167,7 +160,7 @@ def refresh(shorthash):
 
 @cli.command()
 @click.argument("shorthash")
-def delete(shorthash):
+def remove(shorthash):
     """Delete a manga by shorthash from the cache."""
 
     with core.Cache() as cache:
@@ -202,13 +195,13 @@ def download(shorthash, path, cids, force):
 
     manga = _load(shorthash, cache)
 
-    chapters = []
-
     if cids is None:
         if not click.confirm(
             "ALL chapters will be downloaded (this consumes a lot of bandwidth). Are you sure?"
         ):
             raise click.Abort()
+
+        chapters = []
 
         for _, langs in manga.chapters.items():
             chapter = langs.get(LANG)
@@ -216,13 +209,7 @@ def download(shorthash, path, cids, force):
                 chapters.append(chapter)
 
     else:
-        for cid in cids.split(","):
-            if "-" in cid:
-                # range of chapters
-                start, end = cid.split("-")
-                chapters.extend(manga[start:end:LANG])
-            else:
-                chapters.append(manga[cid][LANG])
+        chapters = manga.select(cids, lang=LANG)
 
     for chapter in chapters:
         click.echo(f"downloading chapter {chapter.id}")

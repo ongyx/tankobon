@@ -5,7 +5,9 @@ import re
 from .. import core, models
 
 
-RE_CHAPTER = re.compile(r".*[Cc]hapter ?([\d\.]+) ?:? ?(.*)")
+# mangakakalot chapter urls always end with '/chapter_(number)'.
+RE_CHAPTER = re.compile(r"(\d+(\.\d+)?)")
+RE_TITLE = re.compile(r"^.*: (.*)$")
 
 
 class Parser(core.Parser):
@@ -48,6 +50,7 @@ class Parser(core.Parser):
             desc = desc_tag.text
 
         cover = soup.find("div", class_="manga-info-pic").img["src"]
+        print(cover)
 
         return models.Metadata(
             url=url,
@@ -67,12 +70,14 @@ class Parser(core.Parser):
             if not link:
                 continue
 
-            cid, title = RE_CHAPTER.findall(link.text)[0]
+            url = link["href"]
+            cid = RE_CHAPTER.search(url.split("/")[-1]).group(1)
+            title = RE_TITLE.match(link["title"]).group(1)
 
             manga.add(
                 models.Chapter(
                     id=cid,
-                    url=link["href"],
+                    url=url,
                     title=title,
                 )
             )

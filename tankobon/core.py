@@ -333,6 +333,18 @@ class Downloader:
 
         self.manifest[chapter.id][chapter.lang] = pages
 
+    def download_cover(self, manga: models.Manga):
+        """Download a manga's cover to the download path as 'cover.(ext)'.
+
+        Args:
+            manga: The manga to download a cover for.
+        """
+
+        self.session.headers.update({"Referer": manga.meta.url})
+
+        with self.session.get(manga.meta.cover) as resp:
+            utils.save_response(self.path / "cover", resp)
+
     def pdfify(
         self,
         chapters: List[str],

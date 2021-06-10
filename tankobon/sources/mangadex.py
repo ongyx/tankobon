@@ -59,7 +59,6 @@ class Parser(core.Parser):
                 manga.add(
                     models.Chapter(
                         id=chapter.chapter,  # the chapter number
-                        # unused
                         url=chapter.id,  # the mangadex chapter UUID
                         title=chapter.title,
                         volume=chapter.volume,

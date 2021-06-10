@@ -19,7 +19,7 @@ import sys
 import threading
 import traceback
 
-from PySide6.QtCore import Qt, Signal, QObject, QSize
+from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -46,7 +46,8 @@ from PySide6.QtWidgets import (
     QWidgetItem,
 )
 
-from .. import core, sources  # noqa: F401
+from .. import core, models, sources  # noqa: F401
+from ..utils import Config
 from . import resources, template, utils  # noqa: F401
 
 from ..__version__ import __version__
@@ -57,6 +58,10 @@ QStyle = _app.style()
 LOGO = QPixmap(":/logo.jpg")
 
 HOME = pathlib.Path.home()
+
+CONFIG = Config()
+LANG = CONFIG["lang"]
+
 CACHE = core.Cache()
 
 MAX_COL = 5
@@ -82,12 +87,12 @@ def _normalize(s):
     return s.replace("_", " ").capitalize()
 
 
-def _load_manga(url):
+def _load_manga(hash):
     with MANGA_LOCK:
-        if url not in MANGA:
-            MANGA[url] = CACHE.load(url)
+        if hash not in MANGA:
+            MANGA[hash] = CACHE.load(hash)
 
-        return MANGA[url]
+        return MANGA[hash]
 
 
 def delete(widget):
@@ -154,7 +159,7 @@ class AboutBox(MessageBox):
 
         # build table of supported sources
         supported = []
-        for cls in core.Manga.registered:
+        for cls in core.Parser.registered:
             supported.append(f"`{cls.__module__}` ({cls.domain.pattern})  ")
 
         self.setTextFormat(Qt.MarkdownText)
@@ -218,8 +223,8 @@ class ProgressDialog(QProgressDialog):
 
 # A manga item.
 class Item(QListWidgetItem):
-    def __init__(self, metadata: dict):
-        self.meta = core.Metadata(**metadata)
+    def __init__(self, meta: models.Metadata):
+        self.meta = meta
         super().__init__(self.meta.title)
 
         # self.setToolTip(", ".join(self.meta.alt_titles))
@@ -242,7 +247,8 @@ class ItemInfoBox(QWidget):
 
         cover = QPixmap()
         try:
-            cover_path = next(CACHE._hash_path(meta.url).glob("cover.*"))
+            manga_path = CACHE.root / meta.hash
+            cover_path = next(manga_path.glob("cover.*"))
 
         except StopIteration:
             cover = QPixmap(":/missing.jpg")
@@ -317,15 +323,15 @@ class ItemInfoBox(QWidget):
 class ItemList(QListWidget):
     def __init__(self):
         super().__init__()
-        self.urls = set()
+        self.hashs = set()
 
-        for _, metadata in CACHE.index.items():
-            self.addItem(Item(metadata["metadata"]))
+        for _, manga in CACHE.data.items():
+            self.addItem(Item(manga["meta"]))
 
         self.reload()
 
     def addItem(self, item):
-        self.urls.add(item.meta.url)
+        self.hashs.add(item.meta.hash)
         super().addItem(item)
 
     def reload(self):
@@ -333,28 +339,6 @@ class ItemList(QListWidget):
 
 
 MANGA_ITEMS = ItemList()
-
-
-class MangaWorker(QObject):
-    progress = Signal(object)
-    done = Signal()
-    failed = Signal(Exception)
-
-    def download(self, manga, *args, **kwargs):
-        try:
-            manga.download(*args, **kwargs, progress=self.progress.emit)
-        except Exception as e:
-            self.failed.emit(e)
-
-        self.done.emit()
-
-    def refresh(self, manga, *args, **kwargs):
-        try:
-            manga.refresh(*args, **kwargs, progress=self.progress.emit)
-        except Exception as e:
-            self.failed.emit(e)
-
-        self.done.emit()
 
 
 # Toolbar at the bottom of the window.
@@ -431,12 +415,12 @@ class ToolBar(QToolBar):
     def onSelectedManga(self, manga_item):
         self.selected = manga_item
 
-        url = manga_item.meta.url
-        if url not in self.summaries:
-            manga = _load_manga(url)
-            self.summaries[url] = f"{len(manga.data)} chapters"
+        hash = manga_item.meta.hash
+        if hash not in self.summaries:
+            manga = _load_manga(hash)
+            self.summaries[hash] = f"{len(manga.chapters)} chapters"
 
-        self.summary.setText(self.summaries[url])
+        self.summary.setText(self.summaries[hash])
 
     def onDeletedManga(self):
         self.summary.setText("")
@@ -454,15 +438,14 @@ class ToolBar(QToolBar):
     def _refresh(self, manga):
 
         with SpinningCursor():
-            worker = MangaWorker()
+            parser = core.Parser.parser(manga.meta.url)
+            parser.add_chapters(manga)
 
-            worker.refresh(manga)
-
-            CACHE.save(manga, cover=True)
+            CACHE.dump(manga)
 
             # add to item list (only if manga is new)
-            if manga.url not in MANGA_ITEMS.urls:
-                MANGA_ITEMS.addItem(Item(manga.meta.__dict__))
+            if manga.meta.hash not in MANGA_ITEMS.hashs:
+                MANGA_ITEMS.addItem(Item(manga.meta))
                 MANGA_ITEMS.reload()
 
     def create(self):
@@ -477,7 +460,7 @@ class ToolBar(QToolBar):
 
         url = dialog.textValue()
 
-        if url in CACHE.index:
+        if url in CACHE.alias:
             MessageBox.info(
                 T_CREATE,
                 "Manga already exists in cache. To refresh a manga, select a manga and click the refresh button.",
@@ -485,7 +468,7 @@ class ToolBar(QToolBar):
             return
 
         try:
-            manga = core.Manga.from_url(url)
+            parser = core.Parser.parser(url)
         except core.UnknownDomainError:
             MessageBox.warn(
                 T_CREATE,
@@ -493,7 +476,13 @@ class ToolBar(QToolBar):
             )
             return
 
+        manga = parser.create(url)
+
         self._refresh(manga)
+
+        if manga.meta.cover:
+            with core.Downloader(CACHE.root / manga.meta.hash) as downloader:
+                downloader.download_cover(manga)
 
     def delete(self):
         if not self.ensureSelected("delete"):
@@ -505,7 +494,7 @@ class ToolBar(QToolBar):
         )
 
         if reply == MessageBox.Yes:
-            CACHE.delete(self.selected.meta.url)
+            CACHE.delete(self.selected.meta.hash)
             MANGA_ITEMS.takeItem(MANGA_ITEMS.row(self.selected))
             MANGA_ITEMS.reload()
 
@@ -515,14 +504,15 @@ class ToolBar(QToolBar):
         if not self.ensureSelected("refresh"):
             return
 
-        manga = _load_manga(self.selected.meta.url)
+        manga = _load_manga(self.selected.meta.hash)
         self._refresh(manga)
 
     def download(self):
         if not self.ensureSelected("download"):
             return
 
-        manga = _load_manga(self.selected.meta.url)
+        manga = _load_manga(self.selected.meta.hash)
+        parser = core.Parser.parser(manga.meta.url)
 
         dialog = RequiredDialog()
         dialog.setWindowTitle(T_DOWNLOAD)
@@ -535,56 +525,37 @@ class ToolBar(QToolBar):
         if dialog_code == QInputDialog.Rejected:
             return
 
-        chapters = []
-        for chapter in dialog.textValue().split(","):
-
-            if "-" in chapter:
-                try:
-                    chapters.extend(manga.select(*chapter.split("-")))
-                except ValueError:
-                    MessageBox.warn(
-                        T_DOWNLOAD,
-                        f"Chapter range {chapter} doesn't exist or is out of bounds.",
-                    )
-                    return
-
-            else:
-                if chapter not in manga.data:
-                    MessageBox.warn(T_DOWNLOAD, f"Chapter {chapter} doesn't exist.")
-                    return
-
-                chapters.append(chapter)
+        chapters = manga.select(dialog.textValue(), lang=LANG)
+        if not chapters:
+            MessageBox.warn(T_DOWNLOAD, "Chapters/range is invalid.")
 
         download_path = QFileDialog.getExistingDirectory(
             self, "Choose a folder to download to.", str(HOME)
         )
-        download_path = pathlib.Path(download_path)
 
         dialog = ProgressDialog(self)
 
-        def _download(chapter):
-            chapter_path = download_path / chapter
-            chapter_path.mkdir()
-            manga.download(chapter, chapter_path, progress=dialog.setValue)
+        with core.Downloader(download_path) as downloader:
+            for count, chapter in enumerate(chapters):
 
-        for count, chapter in enumerate(chapters):
+                dialog.setLabelText(f"Downloading chapter {chapter.id}...")
 
-            dialog.setLabelText(f"Downloading chapter {chapter}...")
+                if not chapter.pages:
+                    parser.add_pages(chapter)
 
-            manga.refresh_pages([chapter])
-            total = len(manga.data[chapter].pages)
+                total = len(chapter.pages)
 
-            # HACK: make the progress bar display properly during first iteration
-            dialog.setMaximum(total)
-            dialog.setValue(total - 1)
-            dialog.setValue(0)
+                # HACK: make the progress bar display properly during first iteration
+                dialog.setMaximum(total)
+                dialog.setValue(total - 1)
+                dialog.setValue(0)
 
-            if dialog.wasCanceled():
-                break
+                if dialog.wasCanceled():
+                    break
 
-            _download(chapter)
+                downloader.download(chapter, progress=dialog.setValue)
 
-            dialog.setValue(total)
+                dialog.setValue(total)
 
 
 # Toolbar at the top of the window.
@@ -647,7 +618,7 @@ class View(QWidget):
     def onSelectedManga(self, manga_item):
         self.deleteLast()
 
-        manga = _load_manga(manga_item.meta.url)
+        manga = _load_manga(manga_item.meta.hash)
 
         textedit = QTextEdit()
         textedit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)

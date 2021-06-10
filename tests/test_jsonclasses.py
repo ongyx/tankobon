@@ -2,16 +2,23 @@
 
 import json
 
-from tankobon.jsonclasses import *
+from tankobon.jsonclasses import dataclass  # type: ignore
+
+
+@dataclass
+class Case:
+    foo: int
+    bar: str = "baz"
+
+
+@dataclass
+class NestedCase:
+    foo: Case
 
 
 def test_dumps_and_loads():
-    @dataclass
-    class Test:
-        foo: int
-        bar: str = "baz"
 
-    instance = Test(0)
+    instance = Case(0)
 
     dumped = json.dumps(instance, indent=4)
     print(dumped)
@@ -19,4 +26,11 @@ def test_dumps_and_loads():
     loaded = json.loads(dumped)
     print(loaded)
 
-    assert isinstance(loaded, Test)
+    assert isinstance(loaded, Case)
+
+
+def test_nested():
+    instance = NestedCase(Case(0))
+
+    dumped = json.dumps(instance)
+    print(dumped)

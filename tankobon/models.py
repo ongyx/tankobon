@@ -259,6 +259,37 @@ class Manga:
 
         return "\n".join(table)
 
+    def select(self, cids: str, lang: str = "en") -> List[Chapter]:
+        """Select chapters from this manga.
+
+        Args:
+            cids: A list of chapter ids as a string, delimited by a comma.
+                Ranges are also valid (1-5).
+                i.e '1,3,5,8-10' (select chapters 1,3,5 and 8-10 inclusive of 10).
+            lang: The language of the chapters.
+                Note that if a chapter does not have the language requested, it will be skipped.
+
+        Returns:
+            A list of Chapter objects.
+        """
+
+        chapters = []
+
+        for cid in cids.split(","):
+
+            if "-" in cid:
+                start, end = cid.split("-")
+                chapters.extend(self[start:end:lang])  # type: ignore
+
+            else:
+                langs = self.chapters[cid]
+                chapter = langs.get(lang)
+
+                if chapter is not None:
+                    chapters.append(chapter)
+
+        return chapters
+
     def parsed(self) -> bool:
         """Check whether this manga has been parsed (has at least one chapter)."""
         return len(self.chapters) >= 1
