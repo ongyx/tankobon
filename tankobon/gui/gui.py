@@ -24,7 +24,6 @@ from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QDialogButtonBox,
-    QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QInputDialog,
@@ -66,7 +65,7 @@ CACHE = core.Cache()
 
 MAX_COL = 5
 
-T_CREATE = "Create Manga"
+T_ADD = "Add Manga"
 T_DELETE = "Delete Manga"
 T_DOWNLOAD = "Download Manga"
 
@@ -348,26 +347,21 @@ class ToolBar(QToolBar):
     deletedManga = Signal()
 
     BUTTONS = [
-        {
-            "method": "create",
-            "tooltip": "Add a manga...",
-            "icon": ":/plus.svg",
-        },
-        {
-            "method": "delete",
-            "tooltip": "Delete the selected manga...",
-            "icon": ":/minus.svg",
-        },
-        {
-            "method": "refresh",
-            "tooltip": "Refresh the selected manga...",
-            "icon": ":/refresh-cw.svg",
-        },
-        {
-            "method": "download",
-            "tooltip": "Download the selected manga...",
-            "icon": ":/download.svg",
-        },
+        ("add", ":/plus.svg"),
+        (
+            "delete",
+            ":/minus.svg",
+        ),
+        (
+            "refresh",
+            ":/refresh-cw.svg",
+        ),
+        (
+            "download",
+            ":/download.svg",
+        ),
+        # ("view", ":/eye.svg"),
+        ("locate", ":/folder.svg"),
     ]
 
     def __init__(self):
@@ -381,11 +375,11 @@ class ToolBar(QToolBar):
 
         bg_is_dark = utils.is_dark(_app.palette().window().color())
 
-        for button_info in self.BUTTONS:
-            method = getattr(self, button_info["method"])
-            tooltip = button_info["tooltip"]
+        for method_name, icon_path in self.BUTTONS:
 
-            icon_path = button_info["icon"]
+            method = getattr(self, method_name)
+            tooltip = f"{method_name.title()} a manga..."
+
             if bg_is_dark:
                 icon = QIcon(icon_path.replace(".svg", "-light.svg"))
             else:
@@ -448,9 +442,9 @@ class ToolBar(QToolBar):
                 MANGA_ITEMS.addItem(Item(manga.meta))
                 MANGA_ITEMS.reload()
 
-    def create(self):
+    def add(self):
         dialog = RequiredDialog()
-        dialog.setWindowTitle(T_CREATE)
+        dialog.setWindowTitle(T_ADD)
         dialog.setLabelText("Enter the manga url below:")
 
         dialog_code = dialog.exec()
@@ -462,7 +456,7 @@ class ToolBar(QToolBar):
 
         if url in CACHE.alias:
             MessageBox.info(
-                T_CREATE,
+                T_ADD,
                 "Manga already exists in cache. To refresh a manga, select a manga and click the refresh button.",
             )
             return
@@ -471,7 +465,7 @@ class ToolBar(QToolBar):
             parser = core.Parser.parser(url)
         except core.UnknownDomainError:
             MessageBox.warn(
-                T_CREATE,
+                T_ADD,
                 "Manga url is invalid or no parser was found for the url.",
             )
             return
@@ -507,35 +501,12 @@ class ToolBar(QToolBar):
         manga = _load_manga(self.selected.meta.hash)
         self._refresh(manga)
 
-    def download(self):
-        if not self.ensureSelected("download"):
-            return
-
-        manga = _load_manga(self.selected.meta.hash)
-        parser = core.Parser.parser(manga.meta.url)
-
-        dialog = RequiredDialog()
-        dialog.setWindowTitle(T_DOWNLOAD)
-        dialog.setLabelText(
-            "Enter the chapters to download below, seperated by commas.\n"
-            "Ranges are also allowed, i.e 1-5."
-        )
-
-        dialog_code = dialog.exec()
-        if dialog_code == QInputDialog.Rejected:
-            return
-
-        chapters = manga.select(dialog.textValue(), lang=LANG)
-        if not chapters:
-            MessageBox.warn(T_DOWNLOAD, "Chapters/range is invalid.")
-
-        download_path = QFileDialog.getExistingDirectory(
-            self, "Choose a folder to download to.", str(HOME)
-        )
-
+    def _download(self, manga, chapters):
         dialog = ProgressDialog(self)
 
-        with core.Downloader(download_path) as downloader:
+        parser = core.Parser.parser(manga.meta.url)
+
+        with core.Downloader(CACHE.root / manga.meta.hash) as downloader:
             for count, chapter in enumerate(chapters):
 
                 dialog.setLabelText(f"Downloading chapter {chapter.id}...")
@@ -556,6 +527,41 @@ class ToolBar(QToolBar):
                 downloader.download(chapter, progress=dialog.setValue)
 
                 dialog.setValue(total)
+
+    def download(self):
+        if not self.ensureSelected("download"):
+            return
+
+        manga = _load_manga(self.selected.meta.hash)
+
+        dialog = RequiredDialog()
+        dialog.setWindowTitle(T_DOWNLOAD)
+        dialog.setLabelText(
+            "Enter the chapters to download below, seperated by commas.\n"
+            "Ranges are also allowed, i.e 1-5."
+        )
+
+        dialog_code = dialog.exec()
+        if dialog_code == QInputDialog.Rejected:
+            return
+
+        chapters = manga.select(dialog.textValue(), lang=LANG)
+        if not chapters:
+            MessageBox.warn(T_DOWNLOAD, "Chapters/range is invalid.")
+
+        self._download(manga, chapters)
+
+    # def view(self):
+    #    if not self.ensureSelected("view"):
+    #        return
+
+    def locate(self):
+        if not self.ensureSelected("locate"):
+            return
+
+        hash = self.selected.meta.hash
+
+        utils.xopen(str(CACHE.root / hash))
 
 
 # Toolbar at the top of the window.
