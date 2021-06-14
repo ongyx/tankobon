@@ -2,6 +2,7 @@
 """Utilities for tankobon."""
 
 import collections
+import gzip
 import json
 import logging
 import os
@@ -165,24 +166,38 @@ class PersistentDict(collections.UserDict):
     ```
     """
 
-    def __init__(self, path: Union[str, pathlib.Path], *args, **kwargs):
+    def __init__(
+        self, path: Union[str, pathlib.Path], *args, compress: bool = False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
 
         if isinstance(path, str):
             path = pathlib.Path(path)
 
         self.path = path
+        self.compress = compress
 
         try:
-            with self.path.open() as f:
-                self.data.update(json.load(f))
+            if compress:
+                f = gzip.open(self.path, "rt")
+            else:
+                f = self.path.open()
+
+            self.data.update(json.load(f))
+
+            f.close()
 
         except FileNotFoundError:
             pass
 
     def close(self):
-        with self.path.open("w") as f:
-            json.dump(self.data, f, indent=2)
+        if self.compress:
+            f = gzip.open(self.path, "wt")
+        else:
+            f = self.path.open("w")
+
+        json.dump(self.data, f, indent=2)
+        f.close()
 
     def __enter__(self):
         return self
@@ -200,7 +215,7 @@ class Config(PersistentDict):
         if path is None:
             path = ROOT / self.CONFIG
 
-        super().__init__(path, **self.DEFAULTS)
+        super().__init__(path, compress=False, **self.DEFAULTS)
 
     def __getitem__(self, key):
         if key not in self:

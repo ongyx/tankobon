@@ -20,5 +20,5 @@ def create(manga: Manga):
     table = textedit.toHtml()
 
     return TEMPLATE.substitute(
-        title=manga.meta.title, desc=manga.meta.desc, table=table
+        url=manga.meta.url, title=manga.meta.title, desc=manga.meta.desc, table=table
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import abc
 import concurrent.futures as cfutures
+import gzip
 import logging
 import pathlib
 import re
@@ -152,7 +153,7 @@ class Cache(utils.PersistentDict):
         alias: A map of manga url to manga hash.
     """
 
-    INDEX = "index.json"
+    INDEX = "index.json.gz"
 
     def __init__(self, root: Union[str, pathlib.Path] = utils.ROOT):
         if isinstance(root, str):
@@ -160,7 +161,17 @@ class Cache(utils.PersistentDict):
 
         self.root = root
 
-        super().__init__(self.root / self.INDEX)
+        index = self.root / self.INDEX
+        old_index = self.root / "index.json"
+
+        if old_index.is_file():
+            # indexes are now compressed by default so compress the old one
+            with gzip.open(index, "wt") as f:
+                f.write(old_index.read_text())
+
+            old_index.unlink()
+
+        super().__init__(self.root / self.INDEX, compress=True)
 
         self.alias: Dict[str, str] = {}
 

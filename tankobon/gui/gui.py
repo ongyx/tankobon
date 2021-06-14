@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplashScreen,
-    QTextEdit,
+    QTextBrowser,
     QToolBar,
     QToolButton,
     QVBoxLayout,
@@ -120,6 +120,12 @@ class TitleLabel(QLabel):
         self.setWordWrap(True)
         self.setStyleSheet("background-color: #CCCCFF; color: black;")
         self.setAutoFillBackground(True)
+
+
+class SubtitleLabel(QLabel):
+    def __init__(self, subtitle):
+        super().__init__(f"<b>{subtitle}</b>")
+        self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
 
 # A message box without the window icon.
@@ -279,8 +285,7 @@ class ItemInfoBox(QWidget):
         alt_titles.setStyleSheet("background-color: #DDDDFF; color: black;")
         layout.addWidget(alt_titles, 2, 0, *SPAN)
 
-        genre_header = QLabel("<b>Genre</b>")
-        genre_header.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        genre_header = SubtitleLabel("Genre")
         layout.addWidget(genre_header, 3, 0)
 
         if meta.genres is not None:
@@ -295,8 +300,7 @@ class ItemInfoBox(QWidget):
         manga_header = TitleLabel("<b>Manga</b>")
         layout.addWidget(manga_header, 4, 0, *SPAN)
 
-        author_header = QLabel("<b>Authored by</b>")
-        author_header.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        author_header = SubtitleLabel("Authored by")
         layout.addWidget(author_header, 5, 0)
 
         if meta.authors is not None:
@@ -307,6 +311,13 @@ class ItemInfoBox(QWidget):
 
         authors = QLabel(_authors)
         layout.addWidget(authors, 5, 1)
+
+        source_header = SubtitleLabel("Source")
+        layout.addWidget(source_header, 6, 0)
+
+        source = QLabel(f'<a href="{meta.url}">{meta.url}</b>')
+        source.setWordWrap(True)
+        layout.addWidget(source, 6, 1)
 
     def resizeCover(self):
         self.cover = self.cover.scaled(
@@ -360,7 +371,7 @@ class ToolBar(QToolBar):
             "download",
             ":/download.svg",
         ),
-        # ("view", ":/eye.svg"),
+        ("view", ":/eye.svg"),
         ("locate", ":/folder.svg"),
     ]
 
@@ -551,9 +562,11 @@ class ToolBar(QToolBar):
 
         self._download(manga, chapters)
 
-    # def view(self):
-    #    if not self.ensureSelected("view"):
-    #        return
+    def view(self):
+        if not self.ensureSelected("view"):
+            return
+
+        MessageBox.info("oops", "Sorry! The viewer isn't implemented yet.")
 
     def locate(self):
         if not self.ensureSelected("locate"):
@@ -626,15 +639,16 @@ class View(QWidget):
 
         manga = _load_manga(manga_item.meta.hash)
 
-        textedit = QTextEdit()
-        textedit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        textedit.setReadOnly(True)
-        textedit.document().setDefaultStyleSheet(
+        text = QTextBrowser()
+        text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        text.setReadOnly(True)
+        text.setOpenExternalLinks(True)
+        text.document().setDefaultStyleSheet(
             utils.resource(":/view.css").decode("utf8")
         )
-        textedit.setHtml(template.create(manga))
+        text.setHtml(template.create(manga))
 
-        self.layout.addWidget(textedit)
+        self.layout.addWidget(text)
 
         infobox = ItemInfoBox(manga_item)
         scroll = QScrollArea()

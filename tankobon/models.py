@@ -68,7 +68,7 @@ class Metadata:
         if self.genres:
             self.genres = [utils.sanitize(g.strip()) for g in self.genres]
 
-        self.desc = self.desc.strip()
+        self.desc = self.desc.strip().replace("\r\n", "\n")
 
         if not self.hash:
             self.hash = hashlib.sha256(self.url.encode()).hexdigest()
@@ -250,10 +250,11 @@ class Manga:
                 continue
 
             table.append(
-                "| {:<6} | {:<7} | {}".format(
+                "| {:<6} | {:<7} | [{}]({})".format(
                     chapter.volume or "(empty)",
                     chapter.id or "(empty)",
                     chapter.title or "(empty)",
+                    chapter.url,
                 )
             )
 
