@@ -3,7 +3,8 @@
 import json
 from typing import Dict
 
-from .. import core, models
+from .. import models
+from . import base
 
 # from ..exceptions import MangaError
 
@@ -16,9 +17,9 @@ METADATA_MAP = {
 }
 
 
-class Parser(core.Parser):
+class Parser(base.Parser):
 
-    domain = r"catmanga.org/series/(\w+)"
+    domain = r"catmanga\.org/series/(\w+)"
 
     # keep state
     # FIXME: cache may grow too large when requesting many manga

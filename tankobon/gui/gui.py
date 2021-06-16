@@ -45,11 +45,13 @@ from PySide6.QtWidgets import (
     QWidgetItem,
 )
 
-from .. import core, models, sources  # noqa: F401
+from .. import core, models
+from ..sources.base import Parser
 from ..utils import Config
-from . import resources, template, utils  # noqa: F401
 
 from ..__version__ import __version__
+
+from . import resources, template, utils  # noqa: F401
 
 _app = QApplication([])
 QStyle = _app.style()
@@ -164,7 +166,7 @@ class AboutBox(MessageBox):
 
         # build table of supported sources
         supported = []
-        for cls in core.Parser.registered:
+        for cls in Parser.registered:
             supported.append(f"`{cls.__module__}` ({cls.domain.pattern})  ")
 
         self.setTextFormat(Qt.MarkdownText)
@@ -443,7 +445,7 @@ class ToolBar(QToolBar):
     def _refresh(self, manga):
 
         with SpinningCursor():
-            parser = core.Parser.parser(manga.meta.url)
+            parser = Parser.by_url(manga.meta.url)
             parser.add_chapters(manga)
 
             CACHE.dump(manga)
@@ -473,7 +475,7 @@ class ToolBar(QToolBar):
             return
 
         try:
-            parser = core.Parser.parser(url)
+            parser = Parser.by_url(url)
         except core.UnknownDomainError:
             MessageBox.warn(
                 T_ADD,
@@ -515,7 +517,7 @@ class ToolBar(QToolBar):
     def _download(self, manga, chapters):
         dialog = ProgressDialog(self)
 
-        parser = core.Parser.parser(manga.meta.url)
+        parser = Parser.by_url(manga.meta.url)
 
         with core.Downloader(CACHE.root / manga.meta.hash) as downloader:
             for count, chapter in enumerate(chapters):

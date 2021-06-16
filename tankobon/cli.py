@@ -8,7 +8,9 @@ from typing import Any, Callable
 import click
 import coloredlogs  # type: ignore
 
-from . import __version__, core, sources, utils  # noqa: F401
+from . import __version__, core, utils
+from .sources.base import Parser
+
 from .exceptions import MangaNotFoundError
 
 click.option: Callable[..., Any] = functools.partial(click.option, show_default=True)  # type: ignore
@@ -99,7 +101,7 @@ def _list():
     """List all manga in the cache."""
 
     prettyprint(
-        {"supported websites": [cls.domain.pattern for cls in core.Parser.registered]}
+        {"supported websites": [cls.domain.pattern for cls in Parser.registered]}
     )
 
     with core.Cache() as cache:
@@ -115,7 +117,7 @@ def _list():
 
 
 def _refresh(manga):
-    parser = core.Parser.parser(manga.meta.url)
+    parser = Parser.by_url(manga.meta.url)
     parser.add_chapters(manga)
 
 
@@ -134,7 +136,7 @@ def add(url):
             )
             return
 
-        parser = core.Parser.parser(url)
+        parser = Parser.by_url(url)
         manga = parser.create(url)
 
         _refresh(manga)
@@ -190,7 +192,7 @@ def download(shorthash, path, cids, force):
     """Download a manga by shorthash."""
 
     cache = core.Cache()
-    parser = core.Parser.parser(shorthash)
+    parser = Parser.by_url(shorthash)
     downloader = core.Downloader(path)
 
     manga = _load(shorthash, cache)

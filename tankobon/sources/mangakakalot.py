@@ -2,15 +2,15 @@
 
 import re
 
-from .. import core, models
-
+from .. import models
+from . import base
 
 # mangakakalot chapter urls always end with '/chapter_(number)'.
 RE_CHAPTER = re.compile(r"(\d+(\.\d+)?)")
 RE_TITLE = re.compile(r"^.*: (.*)$")
 
 
-class Parser(core.Parser):
+class Parser(base.Parser):
 
     domain = r"mangakakalot.com"
 

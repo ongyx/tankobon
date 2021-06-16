@@ -34,8 +34,13 @@ def compile_qrc(path_to_qrc, dest):
 
 
 if __name__ == "__main__":
-    with tempfile.NamedTemporaryFile(suffix=".rc") as f:
+    with tempfile.NamedTemporaryFile(suffix=".rc", delete=False) as f:
         f.write(create_qrc().encode("utf8"))
         f.seek(0)
 
-        compile_qrc(f.name, str(DESTINATION))
+        filename = f.name
+
+    # On Windows, the tempfile cannot be left open while running a command on the file.
+    # So we compile first and then remove the tempfile manually later.
+    compile_qrc(filename, str(DESTINATION))
+    pathlib.Path(filename).unlink()

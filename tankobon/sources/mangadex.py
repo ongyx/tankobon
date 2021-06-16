@@ -2,10 +2,11 @@
 
 import MangaDexPy  # type: ignore
 
-from .. import core, models
+from .. import models
+from . import base
 
 
-class Parser(core.Parser):
+class Parser(base.Parser):
 
     # mangadex has no website frontend yet, match base url plus manga id
     domain = r"mangadex\.org/([a-fA-F0-9\-]+)"
