@@ -8,8 +8,7 @@ from . import base
 
 class Parser(base.Parser):
 
-    # mangadex has no website frontend yet, match base url plus manga id
-    domain = r"mangadex\.org/([a-fA-F0-9\-]+)"
+    domain = r"mangadex\.org/title/([a-fA-F0-9\-]+)"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -54,19 +53,19 @@ class Parser(base.Parser):
 
         for chapter in manga_resp.get_chapters():
 
-            # FIXME: il8n?
-            if chapter.language == "en":
-
-                manga.add(
-                    models.Chapter(
-                        id=chapter.chapter or "0",  # the chapter number
-                        url=chapter.id,  # the mangadex chapter UUID
-                        title=chapter.title,
-                        volume=chapter.volume,
-                    )
+            manga.add(
+                models.Chapter(
+                    id=chapter.chapter or "0",
+                    url=f"https://mangadex.org/chapter/{chapter.id}",
+                    title=chapter.title,
+                    volume=chapter.volume,
+                    lang=chapter.language.split("-")[0],
                 )
+            )
 
     def add_pages(self, chapter):
-        net_chapter = self.client.get_chapter(chapter.url).get_md_network()
+        uuid = chapter.url.rpartition("/")[-1]
+
+        net_chapter = self.client.get_chapter(uuid).get_md_network()
 
         chapter.pages = net_chapter.pages

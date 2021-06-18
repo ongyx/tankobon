@@ -20,17 +20,9 @@ Currently, the following websites are supported:
 - `mangakakalot.com`
 - `mangadex.org`
 
-## Versioning Change
+## API Docs / Changelog
 
-tankobon will now use the version format `YYYY.MM.MICRO`:
-
-- `YYYY` is the full 4-digit year.
-- `MM` is the 1-2 digit month.
-- `MICRO` is the release number for that month.
-
-## API Docs
-
-See [here](API.md).
+See [here](API.md) and [there](CHANGELOG.md).
 
 ## Usage (CLI)
 
@@ -61,14 +53,41 @@ What it can't do:
 
 - Show manga pages (pdf reader?)
 
-## Note on mangadex
+## Multilingual Support
 
-Since mangadex's frontend isn't really done yet, manga hosted there do not have a 'public' url yet.
-To add a mangadex manga, the url must look like this:
+tankobon now supports manga with multiple language translations (especially for Mangadex)!
 
+## Configuration (CLI)
+
+First check the languages the manga supports:
+
+```bash
+$ tankobon info <shorthash> | grep languages -A10
+...
+languages: čeština, český jazyk (cs)
+           English (en)
+           Italiano (it)
+           Русский (ru)
+           Español (es)
+           Português (pt)
+           Bahasa Indonesia (id)
+           język polski, polszczyzna (pl)
+           Nederlands, Vlaams (nl)
+           français, langue française (fr)
 ```
-https://mangadex.org/(manga uuid)
+
+Next, set the language:
+
+```bash
+$ tankobon config -s lang=<code>
 ```
+
+where code is the two-letter ISO 639-1 id (i.e `fr` for `français`) beside the language's native name.
+
+## Configuration (GUI)
+
+On the menu bar, click `File -> Settings` and change the language using the drop-down menu.
+Once the settings are closed, the manga currently being displayed will be reloaded to show the selected language.
 
 ## Todo
 
@@ -76,6 +95,7 @@ https://mangadex.org/(manga uuid)
 - [x] create GUI to make downloading easier, like youtube-DLG
 - [ ] Add user configuration to select another language
 - [ ] `Searcher` class (to search for manga?)
+- [ ] i18n for selected language?
 
 ## Install
 

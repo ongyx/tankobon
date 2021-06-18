@@ -23,6 +23,8 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QComboBox,
+    QDialog,
     QDialogButtonBox,
     QGridLayout,
     QHBoxLayout,
@@ -37,6 +39,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSplashScreen,
+    QTabWidget,
     QTextBrowser,
     QToolBar,
     QToolButton,
@@ -45,7 +48,7 @@ from PySide6.QtWidgets import (
     QWidgetItem,
 )
 
-from .. import core, models
+from .. import core, iso639, models
 from ..sources.base import Parser
 from ..utils import Config
 
@@ -61,7 +64,6 @@ LOGO = QPixmap(":/logo.jpg")
 HOME = pathlib.Path.home()
 
 CONFIG = Config()
-LANG = CONFIG["lang"]
 
 CACHE = core.Cache()
 
@@ -158,34 +160,6 @@ class MessageBox(QMessageBox):
         return msgbox.exec()
 
 
-class AboutBox(MessageBox):
-    def __init__(self, *args):
-        super().__init__(*args)
-
-        self.setWindowTitle("About")
-
-        # build table of supported sources
-        supported = []
-        for cls in Parser.registered:
-            supported.append(f"`{cls.__module__}` ({cls.domain.pattern})  ")
-
-        self.setTextFormat(Qt.MarkdownText)
-        self.setText(
-            __doc__.format(
-                version=__version__,
-                supported="\n".join(supported),
-            )
-        )
-
-        self.setAttribute(Qt.WA_DeleteOnClose)
-
-        small_logo = LOGO.scaled(
-            QSize(256, 256), Qt.KeepAspectRatio, Qt.SmoothTransformation
-        )
-
-        self.setIconPixmap(small_logo)
-
-
 def _excepthook(ex_type, ex_value, ex_traceback):
     MessageBox.crit(
         "An exception occured.",
@@ -226,6 +200,74 @@ class ProgressDialog(QProgressDialog):
         self.setMinimumDuration(0)
         self.setWindowModality(Qt.WindowModal)
         self.setAttribute(Qt.WA_DeleteOnClose, True)
+
+
+class LanguageComboBox(QComboBox):
+    def __init__(self):
+        super().__init__()
+
+        for code, lang in iso639.DATASET.items():
+            self.addItem(f"{lang.native_name} ({code})", code)
+
+        self.currentIndexChanged.connect(self.onCurrentIndexChanged)
+
+    def onCurrentIndexChanged(self, index):
+        code = self.itemData(index)
+        CONFIG["lang"] = code
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Settings")
+
+        layout = QVBoxLayout(self)
+
+        tabs = QTabWidget()
+        tabs.addTab(self.general(), "General")
+        layout.addWidget(tabs)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def general(self):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+
+        layout.addWidget(QLabel("Language"))
+        layout.addWidget(LanguageComboBox())
+
+        return tab
+
+
+class AboutBox(MessageBox):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.setWindowTitle("About")
+
+        # build table of supported sources
+        supported = []
+        for cls in Parser.registered:
+            supported.append(f"`{cls.__module__}` ({cls.domain.pattern})  ")
+
+        self.setTextFormat(Qt.MarkdownText)
+        self.setText(
+            __doc__.format(
+                version=__version__,
+                supported="\n".join(supported),
+            )
+        )
+
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+        small_logo = LOGO.scaled(
+            QSize(256, 256), Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+
+        self.setIconPixmap(small_logo)
 
 
 # A manga item.
@@ -320,6 +362,22 @@ class ItemInfoBox(QWidget):
         source = QLabel(f'<a href="{meta.url}">{meta.url}</b>')
         source.setWordWrap(True)
         layout.addWidget(source, 6, 1)
+
+        langs_header = SubtitleLabel("Languages")
+        layout.addWidget(langs_header, 7, 0)
+
+        manga = CACHE[meta.hash]
+        langs_set = set()
+
+        for chapter in manga["chapters"].values():
+            langs_set.update(chapter.keys())
+
+        langs = QLabel(
+            "<br>".join(
+                f"{iso639.DATASET[lang].native_name} ({lang})" for lang in langs_set
+            )
+        )
+        layout.addWidget(langs, 7, 1)
 
     def resizeCover(self):
         self.cover = self.cover.scaled(
@@ -558,7 +616,7 @@ class ToolBar(QToolBar):
         if dialog_code == QInputDialog.Rejected:
             return
 
-        chapters = manga.select(dialog.textValue(), lang=LANG)
+        chapters = manga.select(dialog.textValue(), lang=CONFIG["lang"])
         if not chapters:
             MessageBox.warn(T_DOWNLOAD, "Chapters/range is invalid.")
 
@@ -586,22 +644,28 @@ class MenuBar(QMenuBar):
 
         file = self.addMenu("File")
 
+        file_settings = QAction("Settings", self)
+        file_settings.triggered.connect(self.settings)
+        file.addAction(file_settings)
+
         file_quit = QAction("Quit", self)
         file_quit.triggered.connect(_app.quit)
-
         file.addAction(file_quit)
 
         help = self.addMenu("Help")
 
         help_tankobon = QAction("About tankobon", self)
         help_tankobon.triggered.connect(self.about)
-
         help.addAction(help_tankobon)
 
         help_qt = QAction("About Qt", self)
         help_qt.triggered.connect(_app.aboutQt)
-
         help.addAction(help_qt)
+
+    def settings(self):
+        settings_dialog = SettingsDialog(self)
+        settings_dialog.exec()
+        self.parentWidget().reload()
 
     def about(self):
         about_box = AboutBox(self)
@@ -614,13 +678,14 @@ class View(QWidget):
         super().__init__()
         self.layout = QHBoxLayout(self)
 
+        self.selected = None
         self.pixmap_cache = {}
 
         # The split view at first shows the list of manga items and the default item view.
         # After a manga has been selected, there will be a total of three widgets:
         # - Manga item list
-        # - Manga info.
-        # - Manga cover
+        # - Manga description
+        # - Manga info (incl. cover)
         self.layout.addWidget(MANGA_ITEMS)
         self.layout.addWidget(self.default())
 
@@ -638,6 +703,7 @@ class View(QWidget):
 
     def onSelectedManga(self, manga_item):
         self.deleteLast()
+        self.selected = manga_item
 
         manga = _load_manga(manga_item.meta.hash)
 
@@ -648,7 +714,7 @@ class View(QWidget):
         text.document().setDefaultStyleSheet(
             utils.resource(":/view.css").decode("utf8")
         )
-        text.setHtml(template.create(manga))
+        text.setHtml(template.create(manga, lang=CONFIG["lang"]))
 
         self.layout.addWidget(text)
 
@@ -665,6 +731,14 @@ class View(QWidget):
         self.deleteLast()
 
         self.layout.addWidget(self.default())
+
+    def reload(self):
+        if self.selected is not None:
+            self.onSelectedManga(self.selected)
+
+        else:
+            # no manga selected yet.
+            self.onDeletedManga()
 
 
 # Main window.
@@ -693,6 +767,9 @@ class Root(QMainWindow):
 
         self.setCentralWidget(wrapper)
 
+    def reload(self):
+        self.view.reload()
+
     def confirmQuit(self):
         reply = MessageBox.ask(
             "Quit?",
@@ -704,6 +781,7 @@ class Root(QMainWindow):
         if self.confirmQuit():
 
             CACHE.close()
+            CONFIG.close()
             event.accept()
         else:
             event.ignore()

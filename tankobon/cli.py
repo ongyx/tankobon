@@ -3,12 +3,13 @@
 import functools
 import logging
 import pathlib
+import sys
 from typing import Any, Callable
 
 import click
 import coloredlogs  # type: ignore
 
-from . import __version__, core, utils
+from . import __version__, core, iso639, utils
 from .sources.base import Parser
 
 from .exceptions import MangaNotFoundError
@@ -22,28 +23,6 @@ VERBOSITY = [
 ]
 
 CONFIG = utils.Config()
-LANG = CONFIG["lang"]
-
-
-@click.group()
-@click.version_option(__version__)
-@click.option(
-    "-v", "--verbose", "verbosity", help="be more chatty", default=4, count=True
-)
-def cli(verbosity):
-    """Manga browser/downloader.
-
-    Once a manga has been added to tankobon using 'tankobon add <url>',
-    you can refer to it using its shorthash (first 8 characters of its SHA512 hash).
-
-    Executing 'tankobon list' will show the shorthashes of all manga added to tankobon.
-    """
-    # set up logger
-    coloredlogs.install(
-        level=VERBOSITY[verbosity - 1],
-        fmt=" %(levelname)-8s :: %(message)s",
-        logger=_log,
-    )
 
 
 def prettyprint(dict_):
@@ -69,6 +48,39 @@ def _load(shorthash, cache):
         raise click.Abort()
 
 
+@click.group()
+@click.version_option(__version__)
+@click.option(
+    "-v", "--verbose", "verbosity", help="be more chatty", default=4, count=True
+)
+def cli(verbosity):
+    """Manga browser/downloader.
+
+    Once a manga has been added to tankobon using 'tankobon add <url>',
+    you can refer to it using its shorthash (first 8 characters of its SHA512 hash).
+
+    Executing 'tankobon list' will show the shorthashes of all manga added to tankobon.
+    """
+    # set up logger
+    coloredlogs.install(
+        level=VERBOSITY[verbosity - 1],
+        fmt=" %(levelname)-8s :: %(message)s",
+        logger=_log,
+    )
+
+
+@cli.command()
+@click.option("-s", "--set", "pair", help="a key-value pair (<key>=<value>)")
+def config(pair):
+    """Change/show tankobon's config."""
+
+    if pair is not None:
+        key, _, value = pair.partition("=")
+        CONFIG[key] = value
+    else:
+        prettyprint(CONFIG)
+
+
 @cli.command()
 @click.argument("shorthash")
 @click.option("-c", "--chapter", help="show info only for a specific chapter")
@@ -78,21 +90,28 @@ def info(shorthash, chapter):
     with core.Cache() as cache:
 
         manga = _load(shorthash, cache)
+        info = manga.info
 
         if chapter:
-            prettyprint(manga.chapters[chapter].__dict__)
+            prettyprint(manga.chapters[chapter][CONFIG["lang"]].__dict__)
         else:
             prettyprint(manga.meta.__dict__)
 
-            click.echo(manga.summary())
+            prettyprint(
+                {
+                    "languages": [
+                        f"{iso639.DATASET[lang].native_name} ({lang})"
+                        for lang in info["langs"]
+                    ]
+                }
+            )
 
-            info = manga.info
+            click.echo(manga.summary(lang=CONFIG["lang"], link=False))
 
             click.echo(
                 "summary: "
                 f"{utils.plural(len(info['volumes']), 'volume')}, "
-                f"{utils.plural(info['chapters'], 'chapter')}\n"
-                f"languages: {', '.join(info['langs'])}"
+                f"{utils.plural(info['chapters'], 'chapter')}"
             )
 
 
@@ -192,10 +211,10 @@ def download(shorthash, path, cids, force):
     """Download a manga by shorthash."""
 
     cache = core.Cache()
-    parser = Parser.by_url(shorthash)
     downloader = core.Downloader(path)
 
     manga = _load(shorthash, cache)
+    parser = Parser.by_url(manga.meta.url)
 
     if cids is None:
         if not click.confirm(
@@ -206,12 +225,12 @@ def download(shorthash, path, cids, force):
         chapters = []
 
         for _, langs in manga.chapters.items():
-            chapter = langs.get(LANG)
+            chapter = langs.get(CONFIG["lang"])
             if chapter is not None:
                 chapters.append(chapter)
 
     else:
-        chapters = manga.select(cids, lang=LANG)
+        chapters = manga.select(cids, lang=CONFIG["lang"])
 
     for chapter in chapters:
         click.echo(f"downloading chapter {chapter.id}")
@@ -251,7 +270,7 @@ def pdfify(path, chapters, output):
         else:
             chapters = chapters.split(",")
 
-        downloader.pdfify(chapters, output, lang=LANG)
+        downloader.pdfify(chapters, output, lang=CONFIG["lang"])
 
 
 @cli.command("gui")
@@ -269,3 +288,10 @@ def _gui():
 
     else:
         gui.main()
+
+
+def main():
+    try:
+        cli()
+    finally:
+        CONFIG.close()

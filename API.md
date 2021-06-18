@@ -1,13 +1,6 @@
 # Table of Contents
 
 * [tankobon.core](#tankobon.core)
-  * [Parser](#tankobon.core.Parser)
-    * [create](#tankobon.core.Parser.create)
-    * [parser](#tankobon.core.Parser.parser)
-    * [metadata](#tankobon.core.Parser.metadata)
-    * [add\_chapters](#tankobon.core.Parser.add_chapters)
-    * [add\_pages](#tankobon.core.Parser.add_pages)
-    * [soup](#tankobon.core.Parser.soup)
   * [Cache](#tankobon.core.Cache)
     * [fullhash](#tankobon.core.Cache.fullhash)
     * [dump](#tankobon.core.Cache.dump)
@@ -17,6 +10,8 @@
     * [download](#tankobon.core.Downloader.download)
     * [download\_cover](#tankobon.core.Downloader.download_cover)
     * [pdfify](#tankobon.core.Downloader.pdfify)
+* [tankobon.exceptions](#tankobon.exceptions)
+* [tankobon.iso639](#tankobon.iso639)
 * [tankobon.models](#tankobon.models)
   * [Metadata](#tankobon.models.Metadata)
   * [Chapter](#tankobon.models.Chapter)
@@ -38,148 +33,19 @@
   * [parse\_domain](#tankobon.utils.parse_domain)
   * [UserSession](#tankobon.utils.UserSession)
   * [PersistentDict](#tankobon.utils.PersistentDict)
+* [tankobon.sources.base](#tankobon.sources.base)
+  * [Parser](#tankobon.sources.base.Parser)
+    * [create](#tankobon.sources.base.Parser.create)
+    * [by\_url](#tankobon.sources.base.Parser.by_url)
+    * [metadata](#tankobon.sources.base.Parser.metadata)
+    * [add\_chapters](#tankobon.sources.base.Parser.add_chapters)
+    * [add\_pages](#tankobon.sources.base.Parser.add_pages)
+    * [soup](#tankobon.sources.base.Parser.soup)
 
 <a name="tankobon.core"></a>
 # tankobon.core
 
 Core functionality of tankobon.
-
-<a name="tankobon.core.Parser"></a>
-## Parser Objects
-
-```python
-class Parser(abc.ABC)
-```
-
-<a name="tankobon.core.Parser.create"></a>
-#### create
-
-```python
- | create(url: str) -> models.Manga
-```
-
-Create a new manga.
-
-**Arguments**:
-
-- `url` - The manga url.
-  
-
-**Returns**:
-
-  A Manga object.
-
-<a name="tankobon.core.Parser.parser"></a>
-#### parser
-
-```python
- | @classmethod
- | parser(cls, url: str) -> Parser
-```
-
-Get the appropiate parser subclass for the domain in url.
-
-**Arguments**:
-
-- `url` - The url to get the subclass for.
-  
-
-**Returns**:
-
-  The subclass instance that can be used to parse the url.
-  
-
-**Raises**:
-
-  UnknownDomainError, if there is no registered subclass for the url domain.
-
-<a name="tankobon.core.Parser.metadata"></a>
-#### metadata
-
-```python
- | @abc.abstractmethod
- | metadata(url: str) -> models.Metadata
-```
-
-Parse metadata for a manga url.
-
-**Arguments**:
-
-- `url` - The manga url.
-  
-
-**Returns**:
-
-  The Metadata object.
-
-<a name="tankobon.core.Parser.add_chapters"></a>
-#### add\_chapters
-
-```python
- | @abc.abstractmethod
- | add_chapters(manga: models.Manga)
-```
-
-Add chapters to the manga.
-
-This method should add every chapter in the manga as a Chapter object:
-
-
-Only the 'url' and 'id' args are required when creating a Chapter.
-The other fields are optional and have default values (see `help(tankobon.models.Chapter)`).
-
-```python
-def chapters(self, manga):
-    for ... in ...:
-        # do your parsing here
-        manga.add(Chapter(...))
-```
-
-**Arguments**:
-
-- `manga` - The manga object.
-
-<a name="tankobon.core.Parser.add_pages"></a>
-#### add\_pages
-
-```python
- | @abc.abstractmethod
- | add_pages(chapter: models.Chapter)
-```
-
-Add pages to the chapter in the manga as a list of urls.
-The pages must be in ascending order.
-
-This method should assign pages to the chapter:
-
-
-```python
-def pages(self, chapter):
-    # do your parsing here
-    chapter.pages = [...]  # assign directly to the chapter's pages.
-```
-
-**Arguments**:
-
-- `chapter` - The chapter object (already added to the manga).
-
-<a name="tankobon.core.Parser.soup"></a>
-#### soup
-
-```python
- | soup(url: str) -> bs4.BeautifulSoup
-```
-
-Get a soup from a url.
-
-**Arguments**:
-
-- `url` - The url to get a soup from.
-  
-
-**Returns**:
-
-  The soup of the url.
 
 <a name="tankobon.core.Cache"></a>
 ## Cache Objects
@@ -343,6 +209,15 @@ The PDF will be A4 sized (vertical).
   Defaults to 'en'.
 - `dest` - Where to write the PDF to.
 
+<a name="tankobon.exceptions"></a>
+# tankobon.exceptions
+
+<a name="tankobon.iso639"></a>
+# tankobon.iso639
+
+ISO 639-1/2 language code dataset mapping.
+Dataset sourced from https://github.com/haliaeetus/iso-639.
+
 <a name="tankobon.models"></a>
 # tankobon.models
 
@@ -395,7 +270,8 @@ A manga chapter.
 - `url` - The chapter url.
 - `title` - The chapter name.
 - `volume` - The volume the chapter belongs to.
-- `lang` - The ISO 639-1 language code that this chapter was translated to.
+- `lang` - The RFC 5646 (IETF) language code that this chapter was translated to.
+  (i.e 'en' - English)
 - `pages` - A list of image urls to the chapter pages.
 - `other` - Miscellanious map of keys to values.
   May be used by parsers to store parser-specific info (keep state).
@@ -535,7 +411,7 @@ Deserialise this manga from a dict.
 #### summary
 
 ```python
- | summary(lang: str = "en") -> str
+ | summary(lang: str = "en", link: bool = True) -> str
 ```
 
 Create a Markdown table summary of all volumes and chapters in this manga.
@@ -543,6 +419,8 @@ Create a Markdown table summary of all volumes and chapters in this manga.
 **Arguments**:
 
 - `lang` - The language to summerise for.
+- `link` - Whether or not to add URL links.
+  Defaults to True.
   
 
 **Returns**:
@@ -723,4 +601,146 @@ d = PersistentDict(file)
 d["baz"] = 42
 d.close()
 ```
+
+<a name="tankobon.sources.base"></a>
+# tankobon.sources.base
+
+Abstract base classes for implementing a source.
+
+<a name="tankobon.sources.base.Parser"></a>
+## Parser Objects
+
+```python
+class Parser(abc.ABC)
+```
+
+<a name="tankobon.sources.base.Parser.create"></a>
+#### create
+
+```python
+ | create(url: str) -> models.Manga
+```
+
+Create a new manga.
+
+**Arguments**:
+
+- `url` - The manga url.
+  
+
+**Returns**:
+
+  A Manga object.
+
+<a name="tankobon.sources.base.Parser.by_url"></a>
+#### by\_url
+
+```python
+ | @classmethod
+ | by_url(cls, url: str) -> Parser
+```
+
+Get the appropiate parser subclass for the domain in url.
+
+**Arguments**:
+
+- `url` - The url to get the subclass for.
+  
+
+**Returns**:
+
+  The subclass instance that can be used to parse the url.
+  
+
+**Raises**:
+
+  UnknownDomainError, if there is no registered subclass for the url domain.
+
+<a name="tankobon.sources.base.Parser.metadata"></a>
+#### metadata
+
+```python
+ | @abc.abstractmethod
+ | metadata(url: str) -> models.Metadata
+```
+
+Parse metadata for a manga url.
+
+**Arguments**:
+
+- `url` - The manga url.
+  
+
+**Returns**:
+
+  The Metadata object.
+
+<a name="tankobon.sources.base.Parser.add_chapters"></a>
+#### add\_chapters
+
+```python
+ | @abc.abstractmethod
+ | add_chapters(manga: models.Manga)
+```
+
+Add chapters to the manga.
+
+This method should add every chapter in the manga as a Chapter object:
+
+
+Only the 'url' and 'id' args are required when creating a Chapter.
+The other fields are optional and have default values (see `help(tankobon.models.Chapter)`).
+
+```python
+def chapters(self, manga):
+    for ... in ...:
+        # do your parsing here
+        manga.add(Chapter(...))
+```
+
+**Arguments**:
+
+- `manga` - The manga object.
+
+<a name="tankobon.sources.base.Parser.add_pages"></a>
+#### add\_pages
+
+```python
+ | @abc.abstractmethod
+ | add_pages(chapter: models.Chapter)
+```
+
+Add pages to the chapter in the manga as a list of urls.
+The pages must be in ascending order.
+
+This method should assign pages to the chapter:
+
+
+```python
+def pages(self, chapter):
+    # do your parsing here
+    chapter.pages = [...]  # assign directly to the chapter's pages.
+```
+
+**Arguments**:
+
+- `chapter` - The chapter object (already added to the manga).
+
+<a name="tankobon.sources.base.Parser.soup"></a>
+#### soup
+
+```python
+ | soup(url: str) -> bs4.BeautifulSoup
+```
+
+Get a soup from a url.
+
+**Arguments**:
+
+- `url` - The url to get a soup from.
+  
+
+**Returns**:
+
+  The soup of the url.
 

@@ -83,7 +83,8 @@ class Chapter:
         url: The chapter url.
         title: The chapter name.
         volume: The volume the chapter belongs to.
-        lang: The ISO 639-1 language code that this chapter was translated to.
+        lang: The RFC 5646 (IETF) language code that this chapter was translated to.
+            (i.e 'en' - English)
         pages: A list of image urls to the chapter pages.
         other: Miscellanious map of keys to values.
             May be used by parsers to store parser-specific info (keep state).
@@ -229,11 +230,13 @@ class Manga:
         """
         return cls(data["meta"], chapters=data["chapters"])  # type: ignore
 
-    def summary(self, lang: str = "en") -> str:
+    def summary(self, lang: str = "en", link: bool = True) -> str:
         """Create a Markdown table summary of all volumes and chapters in this manga.
 
         Args:
             lang: The language to summerise for.
+            link: Whether or not to add URL links.
+                Defaults to True.
 
         Returns:
             The Markdown table as a string.
@@ -250,12 +253,18 @@ class Manga:
                 continue
 
             table.append(
-                "| {:<6} | {:<7} | [{}]({})".format(
+                "| {:<6} | {:<7} | {}".format(
                     chapter.volume or "(empty)",
                     chapter.id or "(empty)",
-                    chapter.title or "(empty)",
-                    chapter.url,
+                    f"[{chapter.title or '(empty)'}]({chapter.url})"
+                    if link
+                    else chapter.title or "(empty)",
                 )
+            )
+
+        if len(table) == 2:
+            table.append(
+                f"(No chapters available for the language '{lang}'. Maybe try another one?)"
             )
 
         return "\n".join(table)

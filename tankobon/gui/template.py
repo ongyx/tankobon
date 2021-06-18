@@ -12,10 +12,10 @@ from .utils import resource
 TEMPLATE = string.Template(resource(":/view.html").decode("utf8"))
 
 
-def create(manga: Manga):
+def create(manga: Manga, lang: str):
     # convert table to html from markdown
     textedit = QTextEdit()
-    textedit.setMarkdown(manga.summary())
+    textedit.setMarkdown(manga.summary(lang=lang))
 
     table = textedit.toHtml()
 

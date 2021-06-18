@@ -17,7 +17,6 @@ requires = [
     "beautifulsoup4>=4.9.1",
     "click>=7.1.2",
     "coloredlogs>=14.0",
-    "dataclasses-json>=0.5.4",
     "fake-useragent>=0.1.11",
     "filetype>=1.0.7",
     "fpdf>=1.7.2",
@@ -41,4 +40,4 @@ dev = [
 ]
 
 [tool.flit.scripts]
-tankobon = "tankobon.cli:cli"
+tankobon = "tankobon.cli:main"
