@@ -58,7 +58,7 @@ class Parser(base.Parser):
             alt_titles=alt_titles,
             authors=authors,
             genres=genres,
-            desc=desc,
+            desc={"en": desc},
             cover=cover,
         )
 

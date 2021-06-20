@@ -240,6 +240,8 @@ Metadata for a manga.
 - `alt_titles` - A list of alternative names for the manga.
   i.e in another language, original Japanese name, etc.
 - `desc` - The sypnosis (human-readable info) of the manga.
+  This is a map of the ISO 639-1 language code to the localised description.
+  At least 'en' (English) should be present.
 - `cover` - The url to the manga cover page (must be an image).
 - `authors` - A list of author names.
 - `genres` - A list of catagories the manga belongs to.
@@ -595,10 +597,14 @@ with PersistentDict(file) as d:
 # }
 
 # It can also be used without a context manager.
-# Just remember to close() it, or any changes won't be written to disk!
+# Just remember to sync() or close() it, or any changes won't be written to disk!
 
 d = PersistentDict(file)
 d["baz"] = 42
+d.sync()
+
+# other operations...
+
 d.close()
 ```
 

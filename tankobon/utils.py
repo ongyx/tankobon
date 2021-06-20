@@ -158,10 +158,14 @@ class PersistentDict(collections.UserDict):
     # }
 
     # It can also be used without a context manager.
-    # Just remember to close() it, or any changes won't be written to disk!
+    # Just remember to sync() or close() it, or any changes won't be written to disk!
 
     d = PersistentDict(file)
     d["baz"] = 42
+    d.sync()
+
+    # other operations...
+
     d.close()
     ```
     """
@@ -190,7 +194,7 @@ class PersistentDict(collections.UserDict):
         except FileNotFoundError:
             pass
 
-    def close(self):
+    def sync(self):
         if self.compress:
             f = gzip.open(self.path, "wt")
         else:
@@ -198,6 +202,10 @@ class PersistentDict(collections.UserDict):
 
         json.dump(self.data, f, indent=2)
         f.close()
+
+    def close(self):
+        # Alias of self.sync, for now.
+        self.sync()
 
     def __enter__(self):
         return self
@@ -211,14 +219,28 @@ class Config(PersistentDict):
     CONFIG = "config.json"
     DEFAULTS = {"lang": "en"}
 
+    # So different Config instances don't overwrite each other.
+    instance = None
+
     def __init__(self, path: Optional[pathlib.Path] = None):
         if path is None:
             path = ROOT / self.CONFIG
 
         super().__init__(path, compress=False, **self.DEFAULTS)
 
+    def __new__(cls, *args, **kwargs):
+        if not isinstance(cls.instance, cls):
+            cls.instance = super().__new__(cls, *args, **kwargs)
+        return cls.instance
+
     def __getitem__(self, key):
         if key not in self:
             super().__setitem__(key, os.environ[f"TANKOBON_{key.upper()}"])
 
         return super().__getitem__(key)
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+
+
+CONFIG = Config()

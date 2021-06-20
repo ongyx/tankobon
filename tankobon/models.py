@@ -36,6 +36,8 @@ class Metadata:
         alt_titles: A list of alternative names for the manga.
             i.e in another language, original Japanese name, etc.
         desc: The sypnosis (human-readable info) of the manga.
+            This is a map of the ISO 639-1 language code to the localised description.
+            At least 'en' (English) should be present.
         cover: The url to the manga cover page (must be an image).
         authors: A list of author names.
         genres: A list of catagories the manga belongs to.
@@ -54,7 +56,7 @@ class Metadata:
 
     alt_titles: List[str] = _list()
 
-    desc: str = ""
+    desc: Dict[str, str] = _dict()
     cover: str = ""
 
     authors: List[str] = _list()
@@ -68,7 +70,14 @@ class Metadata:
         if self.genres:
             self.genres = [utils.sanitize(g.strip()) for g in self.genres]
 
-        self.desc = self.desc.strip().replace("\r\n", "\n")
+        # Convert desc from old format to new format.
+        # Previously, descriptions could only be in English.
+        # Now, they can be localised according to the ISO 639-1 language code.
+        if isinstance(self.desc, str):
+            self.desc = {"en": self.desc}
+
+        for lang, localized in self.desc.items():
+            self.desc[lang] = localized.strip().replace("\r\n", "\n")
 
         if not self.hash:
             self.hash = hashlib.sha256(self.url.encode()).hexdigest()

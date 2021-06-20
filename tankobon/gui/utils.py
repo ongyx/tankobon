@@ -6,6 +6,7 @@ import subprocess
 
 from PySide6.QtCore import QResource
 from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QTextEdit
 
 SYSTEM = platform.system()
 
@@ -33,3 +34,9 @@ def xopen(path: str):
         subprocess.run(["open", path])
     else:
         subprocess.run(["xdg-open", path])
+
+
+def markdown_to_html(md):
+    textedit = QTextEdit()
+    textedit.setMarkdown(md)
+    return textedit.toHtml()

@@ -20,7 +20,7 @@ import threading
 import traceback
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QAction, QIcon, QPixmap
+from PySide6.QtGui import QAction, QIcon, QPalette, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -57,6 +57,8 @@ from ..__version__ import __version__
 from . import resources, template, utils  # noqa: F401
 
 _app = QApplication([])
+_app.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
 QStyle = _app.style()
 
 LOGO = QPixmap(":/logo.jpg")
@@ -66,8 +68,6 @@ HOME = pathlib.Path.home()
 CONFIG = Config()
 
 CACHE = core.Cache()
-
-MAX_COL = 5
 
 T_ADD = "Add Manga"
 T_DELETE = "Delete Manga"
@@ -206,14 +206,19 @@ class LanguageComboBox(QComboBox):
     def __init__(self):
         super().__init__()
 
+        index = None
+
         for code, lang in iso639.DATASET.items():
             self.addItem(f"{lang.native_name} ({code})", code)
+            if code == CONFIG["lang"]:
+                index = self.count() - 1
+
+        self.setCurrentIndex(index)
 
         self.currentIndexChanged.connect(self.onCurrentIndexChanged)
 
     def onCurrentIndexChanged(self, index):
-        code = self.itemData(index)
-        CONFIG["lang"] = code
+        CONFIG["lang"] = self.currentData()
 
 
 class SettingsDialog(QDialog):
@@ -294,27 +299,29 @@ class ItemInfoBox(QWidget):
         title = TitleLabel(f"<h2><i>{meta.title}</i></h2>")
         layout.addWidget(title, 0, 0, *SPAN)
 
-        cover = QPixmap()
+        self.cover = QPixmap()
+
         try:
             manga_path = CACHE.root / meta.hash
             cover_path = next(manga_path.glob("cover.*"))
 
         except StopIteration:
-            cover = QPixmap(":/missing.jpg")
+            self.cover.load(":/missing.jpg")
 
         else:
-            cover.load(str(cover_path))
+            self.cover.load(str(cover_path))
 
-        # scale cover
-        self.cover = cover.scaled(
-            self.width(),
+        self.cover = self.cover.scaled(
+            int(self.width() / 2),
             self.height(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation,
         )
+
         self.cover_label = QLabel()
+        self.cover_label.setScaledContents(True)
         self.cover_label.setPixmap(self.cover)
-        self.resizeCover()
+
         layout.addWidget(self.cover_label, 1, 0, *SPAN)
 
         if meta.alt_titles is not None:
@@ -379,20 +386,13 @@ class ItemInfoBox(QWidget):
         )
         layout.addWidget(langs, 7, 1)
 
-    def resizeCover(self):
-        self.cover = self.cover.scaled(
-            int(self.width() / 2),
-            self.height(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation,
-        )
-        self.cover_label.setPixmap(self.cover)
-
 
 # A list of manga items in the sidebar.
 class ItemList(QListWidget):
     def __init__(self):
         super().__init__()
+        self.setSortingEnabled(True)
+
         self.hashs = set()
 
         for _, manga in CACHE.data.items():
@@ -409,6 +409,100 @@ class ItemList(QListWidget):
 
 
 MANGA_ITEMS = ItemList()
+
+
+class PageViewToolBar(QToolBar):
+
+    BUTTONS = [
+        ("start", ":/chevrons-left.svg"),
+        ("previous", ":/chevron-left.svg"),
+        ("pageno", ""),
+        ("next", ":/chevron-right.svg"),
+        ("end", ":/chevrons-right.svg"),
+    ]
+
+    setPage = Signal(int)
+
+    def __init__(self, total):
+
+        super().__init__()
+
+        self.pageno = 1
+        self.total = total
+        self.label = QLabel()
+
+        self.setPage.connect(self.onSetPage)
+        self.setPage.emit(self.pageno)
+
+        bg_is_dark = utils.is_dark(_app.palette().window().color())
+
+        for method_name, icon_path in self.BUTTONS:
+
+            if method_name == "pageno":
+                self.addWidget(self.label)
+                continue
+
+            method = getattr(self, method_name)
+            tooltip = f"{method_name.title()} page..."
+
+            if bg_is_dark:
+                icon = QIcon(icon_path.replace(".svg", "-light.svg"))
+            else:
+                icon = QIcon(icon_path)
+
+            action = self.addAction(icon, tooltip)
+            action.triggered.connect(method)
+
+    def onSetPage(self, pageno):
+        self.pageno = pageno
+        self.label.setText(f"{pageno} / {self.total}")
+
+        actions = self.actions()
+        for action in actions:
+            action.setEnabled(True)
+
+        # disable start/prev or end/next actions on the first and last page respectively.
+        if self.pageno == 1:
+            disable = actions[:2]
+        elif self.pageno == self.total:
+            disable = actions[2:]
+
+        for action in disable:
+            action.setEnabled(False)
+
+    def start(self):
+        self.setPage.emit(1)
+
+    def previous(self):
+        self.setPage.emit(self.pageno - 1)
+
+    def next(self):
+        self.setPage.emit(self.pageno + 1)
+
+    def end(self):
+        self.setPage.emit(self.total)
+
+
+class PageView(QWidget):
+    def __init__(self, pages):
+        super().__init__()
+
+        self.pages = pages
+
+        self.label = QLabel(self)
+        self.label.setBackgroundRole(QPalette.Base)
+        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.label.setScaledContents(True)
+
+        self.scroll = QScrollArea(self)
+        self.scroll.setBackgroundRole(QPalette.Dark)
+        self.scroll.setWidget(self.label)
+
+        self.toolbar = PageViewToolBar(len(self.pages))
+        self.toolbar.setPage.connect(self.onSetPage)
+
+    def onSetPage(self, pageno):
+        self.label.setPixmap(QPixmap(self.pages[pageno - 1]))
 
 
 # Toolbar at the bottom of the window.
@@ -431,7 +525,6 @@ class ToolBar(QToolBar):
             "download",
             ":/download.svg",
         ),
-        ("view", ":/eye.svg"),
         ("locate", ":/folder.svg"),
     ]
 
@@ -571,6 +664,8 @@ class ToolBar(QToolBar):
 
         manga = _load_manga(self.selected.meta.hash)
         self._refresh(manga)
+        # reload view
+        MANGA_ITEMS.itemClicked.emit(self.selected)
 
     def _download(self, manga, chapters):
         dialog = ProgressDialog(self)
@@ -622,12 +717,6 @@ class ToolBar(QToolBar):
 
         self._download(manga, chapters)
 
-    def view(self):
-        if not self.ensureSelected("view"):
-            return
-
-        MessageBox.info("oops", "Sorry! The viewer isn't implemented yet.")
-
     def locate(self):
         if not self.ensureSelected("locate"):
             return
@@ -672,6 +761,33 @@ class MenuBar(QMenuBar):
         about_box.exec()
 
 
+# The manga chapters plus description,
+class ChapterView(QWidget):
+    def __init__(self, manga):
+        super().__init__()
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(11, 0, 11, 0)
+
+        summary = QTextBrowser()
+        summary.setReadOnly(True)
+        summary.setOpenExternalLinks(True)
+        summary.document().setDefaultStyleSheet(
+            utils.resource(":/view.css").decode("utf8")
+        )
+        summary.setHtml(utils.markdown_to_html(manga.summary()))
+
+        self.layout.addWidget(summary)
+
+        desc = QLabel()
+        desc.setWordWrap(True)
+        desc.setTextFormat(Qt.RichText)
+        desc.setOpenExternalLinks(True)
+        desc.setText(template.create(manga, lang=CONFIG["lang"]))
+
+        self.layout.addWidget(desc)
+
+
 # The combined manga item list plus preview.
 class View(QWidget):
     def __init__(self):
@@ -707,16 +823,9 @@ class View(QWidget):
 
         manga = _load_manga(manga_item.meta.hash)
 
-        text = QTextBrowser()
-        text.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        text.setReadOnly(True)
-        text.setOpenExternalLinks(True)
-        text.document().setDefaultStyleSheet(
-            utils.resource(":/view.css").decode("utf8")
-        )
-        text.setHtml(template.create(manga, lang=CONFIG["lang"]))
+        chapter_view = ChapterView(manga)
 
-        self.layout.addWidget(text)
+        self.layout.addWidget(chapter_view)
 
         infobox = ItemInfoBox(manga_item)
         scroll = QScrollArea()
@@ -779,9 +888,8 @@ class Root(QMainWindow):
 
     def closeEvent(self, event):
         if self.confirmQuit():
-
-            CACHE.close()
             CONFIG.close()
+            CACHE.close()
             event.accept()
         else:
             event.ignore()

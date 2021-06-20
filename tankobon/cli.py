@@ -3,7 +3,6 @@
 import functools
 import logging
 import pathlib
-import sys
 from typing import Any, Callable
 
 import click

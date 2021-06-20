@@ -6,6 +6,11 @@ from .. import models
 from . import base
 
 
+# turns something like 'es-la' to 'es'.
+def normalize(lang):
+    return lang.split("-")[0]
+
+
 class Parser(base.Parser):
 
     domain = r"mangadex\.org/title/([a-fA-F0-9\-]+)"
@@ -38,13 +43,16 @@ class Parser(base.Parser):
         for author in self.client.search("author", params={"ids[]": manga.author}):
             authors.append(author.name)
 
+        # localised descriptions
+        desc = {normalize(k): v for k, v in manga.desc.items()}
+
         return models.Metadata(
             url=url,
             title=manga.title["en"],
             alt_titles=alt_titles,
             authors=authors,
             genres=[t.name["en"] for t in manga.tags],
-            desc=manga.desc["en"],
+            desc=desc,
             cover=self.client.get_cover(manga.cover).url,
         )
 
@@ -59,7 +67,7 @@ class Parser(base.Parser):
                     url=f"https://mangadex.org/chapter/{chapter.id}",
                     title=chapter.title,
                     volume=chapter.volume,
-                    lang=chapter.language.split("-")[0],
+                    lang=normalize(chapter.language),
                 )
             )
 
