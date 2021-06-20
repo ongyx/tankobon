@@ -1,6 +1,6 @@
-# tankobon
+# ![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/.github/logo.jpg) tankobon
 
-![gui](https://raw.githubusercontent.com/ongyx/tankobon/master/resources/example.jpg "tankobon")
+![gui](https://raw.githubusercontent.com/ongyx/tankobon/master/example.png "tankobon")
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/tankobon)](https://pypi.org/project/tankobon)
@@ -10,7 +10,7 @@
 ![Lines of code](https://img.shields.io/tokei/lines/github/ongyx/tankobon)
 ![calver](https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg)
 
-Basically, youtube-dl for manga.
+Pure-python manga downloader.
 
 The following websites are currently supported:
 
