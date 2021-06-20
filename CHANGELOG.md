@@ -5,6 +5,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2021.6.6 (20 June)
+
+### Added
+
+* (GUI) Support for BBCode in manga descriptions.
+  Any BBCode will now render correctly as HTML in the manga view.
+* Dependency on bbcode.
+* `.sync()` method to `utils.Config` (save config changes).
+
+### Changed
+
+* (GUI) The visual layout has been changed a bit to prepare for viewer support.
+* The `desc` field of `models.Metadata` is now a dictionary map of a language code to the localised description.
+
+### Fixed
+
+* Configuration was not synced across `utils.Config` instances (i.e language), so newer configs would get overwritten by older ones.
+  `utils.Config` now will have only one instance to prevent this.
+* (GUI) Cover images now scale correctly and no longer look pixelated, especially those of high resolution.
+
 ## 2021.6.5 (18 June)
 
 ### Added
