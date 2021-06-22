@@ -7,6 +7,7 @@
     * [load](#tankobon.core.Cache.load)
     * [delete](#tankobon.core.Cache.delete)
   * [Downloader](#tankobon.core.Downloader)
+    * [downloaded](#tankobon.core.Downloader.downloaded)
     * [download](#tankobon.core.Downloader.download)
     * [download\_cover](#tankobon.core.Downloader.download_cover)
     * [pdfify](#tankobon.core.Downloader.pdfify)
@@ -156,6 +157,15 @@ A manga downloader.
 
 - `path` - The path to where the manga chapters will be downloaded.
   For every manga chapter, a corrosponding folder is created if it does not exist.
+
+<a name="tankobon.core.Downloader.downloaded"></a>
+#### downloaded
+
+```python
+ | downloaded(chapter: models.Chapter) -> bool
+```
+
+Check whether a chapter has been downloaded or not.
 
 <a name="tankobon.core.Downloader.download"></a>
 #### download

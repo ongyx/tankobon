@@ -5,13 +5,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2021.6.8 (22 June)
+
+### Added
+
+* New config option `download.rate_limit`: this limits the total number of requests made when downloading chapters at any one time.
+  This can also be set in the GUI settings.
+* Nicer chapter view that can be directly clicked on to download/view chapters.
+* Method `core.Downloader.downloaded(chapter)`: Check whether the pages for a `models.Chapter` has been downloaded.
+
+### Changed
+
+* `utils.Config` no longer implicitly creates a single instance.
+  It is strongly recommended to access the global instance `utils.CONFIG` to avoid stale configurations being written back to disk.
+
 ## 2021.6.7 (22 June)
 
 ### Fixed
 
-* The CatManga source now parses manga descriptions properly.
+* [#26](#26): The CatManga source now parses manga descriptions properly.
   Implicit wrapping of `str` descriptions in `models.Metadata` to dictionaries caused descriptions to be nested.
-  [#26](#26)
+
 
 ## 2021.6.6 (20 June)
 
