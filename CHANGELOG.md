@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 * The CatManga source now parses manga descriptions properly.
   Implicit wrapping of `str` descriptions in `models.Metadata` to dictionaries caused descriptions to be nested.
+  [#26](#26)
 
 ## 2021.6.6 (20 June)
 
