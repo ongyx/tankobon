@@ -48,6 +48,8 @@ from PySide6.QtWidgets import (
     QWidgetItem,
 )
 
+import natsort  # type: ignore
+
 from .. import core, iso639, models
 from ..sources.base import Parser
 from ..utils import Config
@@ -761,23 +763,73 @@ class MenuBar(QMenuBar):
         about_box.exec()
 
 
-# The manga chapters plus description,
+# A chapter preview in a ChapterView.
+class ChapterPreview(QWidget):
+    def __init__(self, chapter):
+        super().__init__()
+        self.layout = QHBoxLayout(self)
+
+        volume = QLabel(chapter.volume or "(empty)")
+
+        self.layout.addWidget(volume)
+
+        chapter_ = QLabel(chapter.id)
+
+        self.layout.addWidget(chapter_)
+
+        title = QLabel(chapter.title or "(empty)")
+
+        self.layout.addWidget(title)
+
+
+# A grid of manga chapters.
 class ChapterView(QWidget):
     def __init__(self, manga):
         super().__init__()
 
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(11, 0, 11, 0)
 
-        summary = QTextBrowser()
-        summary.setReadOnly(True)
-        summary.setOpenExternalLinks(True)
-        summary.document().setDefaultStyleSheet(
+        self.downloader = core.Downloader(CACHE.root / manga.meta.hash)
+
+        chapters = natsort.natsorted(
+            [
+                chapter
+                for chapter, langs in manga.chapters.items()
+                if CONFIG["lang"] in langs
+            ]
+        )
+
+        # each row in the grid has 5 chapters.
+        for chapter in chapters:
+            self.layout.addWidget(
+                ChapterPreview(manga.chapters[chapter][CONFIG["lang"]])
+            )
+
+
+# The manga chapters plus description.
+class SummaryView(QWidget):
+    def __init__(self, manga):
+        super().__init__()
+
+        self.layout = QVBoxLayout(self)
+
+        chapters = QTextBrowser()
+        chapters.setReadOnly(True)
+        chapters.setOpenExternalLinks(True)
+        chapters.document().setDefaultStyleSheet(
             utils.resource(":/view.css").decode("utf8")
         )
-        summary.setHtml(utils.markdown_to_html(manga.summary()))
+        chapters.setHtml(utils.markdown_to_html(manga.summary()))
 
-        self.layout.addWidget(summary)
+        self.layout.addWidget(chapters)
+
+        # chapters = ChapterView(manga)
+        # scroll = QScrollArea()
+        # scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        # scroll.setWidget(chapters)
+
+        # self.layout.addWidget(scroll)
 
         desc = QLabel()
         desc.setWordWrap(True)
@@ -823,9 +875,9 @@ class View(QWidget):
 
         manga = _load_manga(manga_item.meta.hash)
 
-        chapter_view = ChapterView(manga)
+        summary = SummaryView(manga)
 
-        self.layout.addWidget(chapter_view)
+        self.layout.addWidget(summary)
 
         infobox = ItemInfoBox(manga_item)
         scroll = QScrollArea()

@@ -40,14 +40,14 @@ class Parser(base.Parser):
     def metadata(self, url):
         data = self._get_data(url)
 
-        metadata = models.Metadata(
-            url=url,
-            cover=data["cover_art"]["source"],
+        metadata = {
+            "url": url,
+            "cover": data["cover_art"]["source"],
             **{METADATA_MAP[k]: v for k, v in data.items() if k in METADATA_MAP},
-        )
-        metadata.desc = {"en": metadata.desc}
+        }
+        metadata["desc"] = {"en": metadata["desc"]}
 
-        return metadata
+        return models.Metadata(**metadata)
 
     def add_chapters(self, manga):
         data = self._get_data(manga.meta.url)

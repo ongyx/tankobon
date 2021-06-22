@@ -70,12 +70,6 @@ class Metadata:
         if self.genres:
             self.genres = [utils.sanitize(g.strip()) for g in self.genres]
 
-        # Convert desc from old format to new format.
-        # Previously, descriptions could only be in English.
-        # Now, they can be localised according to the ISO 639-1 language code.
-        if isinstance(self.desc, str):
-            self.desc = {"en": self.desc}
-
         for lang, localized in self.desc.items():
             self.desc[lang] = localized.strip().replace("\r\n", "\n")
 
