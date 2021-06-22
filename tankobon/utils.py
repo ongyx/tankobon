@@ -5,7 +5,6 @@ import collections
 import gzip
 import json
 import logging
-import os
 import pathlib
 import re
 from typing import Optional, Union
@@ -217,10 +216,7 @@ class PersistentDict(collections.UserDict):
 class Config(PersistentDict):
 
     CONFIG = "config.json"
-    DEFAULTS = {"lang": "en"}
-
-    # So different Config instances don't overwrite each other.
-    instance = None
+    DEFAULTS = {"lang": "en", "download.rate_limit": 8}
 
     def __init__(self, path: Optional[pathlib.Path] = None):
         if path is None:
@@ -228,19 +224,6 @@ class Config(PersistentDict):
 
         super().__init__(path, compress=False, **self.DEFAULTS)
 
-    def __new__(cls, *args, **kwargs):
-        if not isinstance(cls.instance, cls):
-            cls.instance = super().__new__(cls, *args, **kwargs)
-        return cls.instance
 
-    def __getitem__(self, key):
-        if key not in self:
-            super().__setitem__(key, os.environ[f"TANKOBON_{key.upper()}"])
-
-        return super().__getitem__(key)
-
-    def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-
-
+# Only one instance should be initialised (this one).
 CONFIG = Config()

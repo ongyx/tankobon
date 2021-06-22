@@ -13,6 +13,7 @@ sources:
 {supported}
 """
 
+import functools
 import pathlib
 import signal
 import sys
@@ -20,7 +21,7 @@ import threading
 import traceback
 
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QAction, QIcon, QPalette, QPixmap
+from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -38,9 +39,11 @@ from PySide6.QtWidgets import (
     QProgressDialog,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QSplashScreen,
     QTabWidget,
-    QTextBrowser,
+    QTableWidget,
+    # QTableWidgetItem,
     QToolBar,
     QToolButton,
     QVBoxLayout,
@@ -52,7 +55,7 @@ import natsort  # type: ignore
 
 from .. import core, iso639, models
 from ..sources.base import Parser
-from ..utils import Config
+from ..utils import CONFIG
 
 from ..__version__ import __version__
 
@@ -66,8 +69,6 @@ QStyle = _app.style()
 LOGO = QPixmap(":/logo.jpg")
 
 HOME = pathlib.Path.home()
-
-CONFIG = Config()
 
 CACHE = core.Cache()
 
@@ -223,7 +224,24 @@ class LanguageComboBox(QComboBox):
         CONFIG["lang"] = self.currentData()
 
 
-class SettingsDialog(QDialog):
+class RateLimitSpinBox(QSpinBox):
+    def __init__(self):
+        super().__init__()
+        self.setMinimum(1)
+        self.setValue(CONFIG["download.rate_limit"])
+        self.valueChanged.connect(self.onValueChanged)
+
+    def onValueChanged(self, value):
+        CONFIG["download.rate_limit"] = value
+
+
+class SettingsTab(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout(self)
+
+
+class Settings(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
         self.setWindowTitle("Settings")
@@ -232,6 +250,7 @@ class SettingsDialog(QDialog):
 
         tabs = QTabWidget()
         tabs.addTab(self.general(), "General")
+        tabs.addTab(self.downloads(), "Downloads")
         layout.addWidget(tabs)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -240,11 +259,26 @@ class SettingsDialog(QDialog):
         layout.addWidget(buttons)
 
     def general(self):
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        tab = SettingsTab()
 
-        layout.addWidget(QLabel("Language"))
-        layout.addWidget(LanguageComboBox())
+        tab.layout.addWidget(QLabel("Language"))
+        tab.layout.addWidget(LanguageComboBox())
+
+        return tab
+
+    def downloads(self):
+        tab = SettingsTab()
+
+        tab.layout.addWidget(QLabel("Rate Limit"))
+
+        spinbox = RateLimitSpinBox()
+        spinbox.setToolTip(
+            (
+                "The maximum number of requests that can be made concurrently.\n"
+                "Lower values reduce bandwidth usage but downloads will be slower."
+            )
+        )
+        tab.layout.addWidget(spinbox)
 
         return tab
 
@@ -416,11 +450,11 @@ MANGA_ITEMS = ItemList()
 class PageViewToolBar(QToolBar):
 
     BUTTONS = [
-        ("start", ":/chevrons-left.svg"),
-        ("previous", ":/chevron-left.svg"),
+        ("start", "chevrons-left"),
+        ("previous", "chevron-left"),
         ("pageno", ""),
-        ("next", ":/chevron-right.svg"),
-        ("end", ":/chevrons-right.svg"),
+        ("next", "chevron-right"),
+        ("end", "chevrons-right"),
     ]
 
     setPage = Signal(int)
@@ -428,15 +462,13 @@ class PageViewToolBar(QToolBar):
     def __init__(self, total):
 
         super().__init__()
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
 
         self.pageno = 1
         self.total = total
         self.label = QLabel()
 
         self.setPage.connect(self.onSetPage)
-        self.setPage.emit(self.pageno)
-
-        bg_is_dark = utils.is_dark(_app.palette().window().color())
 
         for method_name, icon_path in self.BUTTONS:
 
@@ -447,10 +479,7 @@ class PageViewToolBar(QToolBar):
             method = getattr(self, method_name)
             tooltip = f"{method_name.title()} page..."
 
-            if bg_is_dark:
-                icon = QIcon(icon_path.replace(".svg", "-light.svg"))
-            else:
-                icon = QIcon(icon_path)
+            icon = utils.icon(icon_path)
 
             action = self.addAction(icon, tooltip)
             action.triggered.connect(method)
@@ -464,6 +493,8 @@ class PageViewToolBar(QToolBar):
             action.setEnabled(True)
 
         # disable start/prev or end/next actions on the first and last page respectively.
+        disable = []
+
         if self.pageno == 1:
             disable = actions[:2]
         elif self.pageno == self.total:
@@ -486,25 +517,66 @@ class PageViewToolBar(QToolBar):
 
 
 class PageView(QWidget):
-    def __init__(self, pages):
-        super().__init__()
+    def __init__(self, parent, pages):
+        super().__init__(parent, Qt.Window)
+        self.layout = QVBoxLayout(self)
 
         self.pages = pages
 
-        self.label = QLabel(self)
-        self.label.setBackgroundRole(QPalette.Base)
-        self.label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.label = QLabel()
+        self.label.setSizePolicy(
+            QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding
+        )
         self.label.setScaledContents(True)
 
-        self.scroll = QScrollArea(self)
-        self.scroll.setBackgroundRole(QPalette.Dark)
-        self.scroll.setWidget(self.label)
+        self.layout.addWidget(self.label, 0, Qt.AlignCenter)
 
         self.toolbar = PageViewToolBar(len(self.pages))
         self.toolbar.setPage.connect(self.onSetPage)
 
+        self.layout.addWidget(self.toolbar, 0, Qt.AlignCenter)
+
+        self._height = self.label.height() + self.toolbar.height() / 2
+
+        self.toolbar.start()
+
     def onSetPage(self, pageno):
-        self.label.setPixmap(QPixmap(self.pages[pageno - 1]))
+        pixmap = QPixmap(self.pages[pageno - 1])
+
+        height = self._height
+        width = (pixmap.width() / pixmap.height()) * height
+
+        print(width, height)
+
+        self.label.resize(width, height)
+        self.label.setPixmap(pixmap)
+
+
+def _download(manga, chapters, downloader):
+    dialog = ProgressDialog()
+
+    parser = Parser.by_url(manga.meta.url)
+
+    for count, chapter in enumerate(chapters):
+
+        dialog.setLabelText(f"Downloading chapter {chapter.id}...")
+
+        if not chapter.pages:
+            parser.add_pages(chapter)
+
+        total = len(chapter.pages)
+
+        # HACK: make the progress bar display properly during first iteration
+        dialog.setMaximum(total)
+        dialog.setValue(total - 1)
+        dialog.setValue(0)
+
+        if dialog.wasCanceled():
+            break
+
+        downloader.download(chapter, progress=dialog.setValue)
+
+        dialog.setValue(total)
 
 
 # Toolbar at the bottom of the window.
@@ -514,20 +586,17 @@ class ToolBar(QToolBar):
     deletedManga = Signal()
 
     BUTTONS = [
-        ("add", ":/plus.svg"),
+        ("add", "plus"),
         (
             "delete",
-            ":/minus.svg",
+            "minus",
         ),
         (
             "refresh",
-            ":/refresh-cw.svg",
+            "refresh-cw",
         ),
-        (
-            "download",
-            ":/download.svg",
-        ),
-        ("locate", ":/folder.svg"),
+        # ("download", "download",),
+        ("locate", "folder"),
     ]
 
     def __init__(self):
@@ -539,21 +608,14 @@ class ToolBar(QToolBar):
 
         self.summaries = {}
 
-        bg_is_dark = utils.is_dark(_app.palette().window().color())
-
         for method_name, icon_path in self.BUTTONS:
 
             method = getattr(self, method_name)
             tooltip = f"{method_name.title()} a manga..."
 
-            if bg_is_dark:
-                icon = QIcon(icon_path.replace(".svg", "-light.svg"))
-            else:
-                icon = QIcon(icon_path)
-
             action = QAction()
             action.setToolTip(tooltip)
-            action.setIcon(icon)
+            action.setIcon(utils.icon(icon_path))
             action.triggered.connect(method)
 
             button = QToolButton()
@@ -669,33 +731,6 @@ class ToolBar(QToolBar):
         # reload view
         MANGA_ITEMS.itemClicked.emit(self.selected)
 
-    def _download(self, manga, chapters):
-        dialog = ProgressDialog(self)
-
-        parser = Parser.by_url(manga.meta.url)
-
-        with core.Downloader(CACHE.root / manga.meta.hash) as downloader:
-            for count, chapter in enumerate(chapters):
-
-                dialog.setLabelText(f"Downloading chapter {chapter.id}...")
-
-                if not chapter.pages:
-                    parser.add_pages(chapter)
-
-                total = len(chapter.pages)
-
-                # HACK: make the progress bar display properly during first iteration
-                dialog.setMaximum(total)
-                dialog.setValue(total - 1)
-                dialog.setValue(0)
-
-                if dialog.wasCanceled():
-                    break
-
-                downloader.download(chapter, progress=dialog.setValue)
-
-                dialog.setValue(total)
-
     def download(self):
         if not self.ensureSelected("download"):
             return
@@ -717,7 +752,8 @@ class ToolBar(QToolBar):
         if not chapters:
             MessageBox.warn(T_DOWNLOAD, "Chapters/range is invalid.")
 
-        self._download(manga, chapters)
+        with core.Downloader(CACHE.root / manga.meta.hash) as downloader:
+            _download(manga, chapters, downloader)
 
     def locate(self):
         if not self.ensureSelected("locate"):
@@ -754,7 +790,7 @@ class MenuBar(QMenuBar):
         help.addAction(help_qt)
 
     def settings(self):
-        settings_dialog = SettingsDialog(self)
+        settings_dialog = Settings(self)
         settings_dialog.exec()
         self.parentWidget().reload()
 
@@ -763,33 +799,21 @@ class MenuBar(QMenuBar):
         about_box.exec()
 
 
-# A chapter preview in a ChapterView.
-class ChapterPreview(QWidget):
-    def __init__(self, chapter):
-        super().__init__()
-        self.layout = QHBoxLayout(self)
-
-        volume = QLabel(chapter.volume or "(empty)")
-
-        self.layout.addWidget(volume)
-
-        chapter_ = QLabel(chapter.id)
-
-        self.layout.addWidget(chapter_)
-
-        title = QLabel(chapter.title or "(empty)")
-
-        self.layout.addWidget(title)
-
-
 # A grid of manga chapters.
-class ChapterView(QWidget):
+class ChapterView(QTableWidget):
     def __init__(self, manga):
         super().__init__()
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
-        self.layout = QVBoxLayout(self)
+        self.setShowGrid(False)
+        self.setFocusPolicy(Qt.NoFocus)
+        self.verticalHeader().setVisible(False)
+        self.horizontalHeader().setStretchLastSection(True)
 
-        self.downloader = core.Downloader(CACHE.root / manga.meta.hash)
+        self.buttons = {}
+
+        self.manga = manga
+        self.downloader = core.Downloader(CACHE.root / self.manga.meta.hash)
 
         chapters = natsort.natsorted(
             [
@@ -799,11 +823,53 @@ class ChapterView(QWidget):
             ]
         )
 
-        # each row in the grid has 5 chapters.
-        for chapter in chapters:
-            self.layout.addWidget(
-                ChapterPreview(manga.chapters[chapter][CONFIG["lang"]])
-            )
+        self.setRowCount(len(chapters))
+        self.setColumnCount(4)
+
+        self.setHorizontalHeaderLabels(["status", "volume", "chapter", "title"])
+
+        for row, chapter in enumerate(chapters):
+            self.addChapter(row, manga.chapters[chapter][CONFIG["lang"]])
+
+    def addChapter(self, row, chapter):
+
+        if self.downloader.downloaded(chapter):
+            icon = utils.icon("eye")
+        else:
+            icon = utils.icon("download")
+
+        button = QToolButton()
+        button.setStyleSheet("border: none;")
+        button.setIcon(icon)
+        button.clicked.connect(functools.partial(self.onClicked, chapter))
+        self.buttons[chapter.id] = button
+        self.setCellWidget(row, 0, button)
+
+        volume = QLabel(chapter.volume or "(empty)")
+        volume.setAlignment(Qt.AlignCenter)
+        self.setCellWidget(row, 1, volume)
+
+        id = QLabel(chapter.id)
+        id.setAlignment(Qt.AlignCenter)
+        self.setCellWidget(row, 2, id)
+
+        title = QLabel(f'<a href="{chapter.url}">{chapter.title or "(empty)"}</a>')
+        title.setOpenExternalLinks(True)
+        self.setCellWidget(row, 3, title)
+
+    def onClicked(self, chapter):
+        if not self.downloader.downloaded(chapter):
+            _download(self.manga, [chapter], self.downloader)
+            self.downloader.manifest.sync()
+
+        self.buttons[chapter.id].setIcon(utils.icon("eye"))
+
+        # pages = self.downloader.manifest[chapter.id][chapter.lang]
+
+        # page_view = PageView(self, pages)
+        # page_view.showMaximized()
+
+        utils.xopen(str(self.downloader.path / chapter.id / chapter.lang))
 
 
 # The manga chapters plus description.
@@ -813,23 +879,9 @@ class SummaryView(QWidget):
 
         self.layout = QVBoxLayout(self)
 
-        chapters = QTextBrowser()
-        chapters.setReadOnly(True)
-        chapters.setOpenExternalLinks(True)
-        chapters.document().setDefaultStyleSheet(
-            utils.resource(":/view.css").decode("utf8")
-        )
-        chapters.setHtml(utils.markdown_to_html(manga.summary()))
+        chapters = ChapterView(manga)
 
         self.layout.addWidget(chapters)
-
-        # chapters = ChapterView(manga)
-        # scroll = QScrollArea()
-        # scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        # scroll.setWidget(chapters)
-
-        # self.layout.addWidget(scroll)
 
         desc = QLabel()
         desc.setWordWrap(True)
@@ -882,7 +934,8 @@ class View(QWidget):
         infobox = ItemInfoBox(manga_item)
         scroll = QScrollArea()
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.verticalScrollBar().setStyleSheet("height:0px;")
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFrameShape(scroll.NoFrame)
         scroll.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         scroll.setWidget(infobox)
 

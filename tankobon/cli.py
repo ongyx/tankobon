@@ -21,7 +21,8 @@ VERBOSITY = [
     for level in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
 ]
 
-CONFIG = utils.Config()
+CONFIG = utils.CONFIG
+CONFIG_TYPES = [int, float, str]
 
 
 def prettyprint(dict_):
@@ -68,16 +69,47 @@ def cli(verbosity):
     )
 
 
-@cli.command()
-@click.option("-s", "--set", "pair", help="a key-value pair (<key>=<value>)")
-def config(pair):
-    """Change/show tankobon's config."""
+def to_native(s):
+    if s in ("true", "false"):
+        return s == "true"
 
-    if pair is not None:
-        key, _, value = pair.partition("=")
-        CONFIG[key] = value
+    for _type in CONFIG_TYPES:
+        try:
+            return _type(s)
+        except ValueError:
+            pass
+
+    return None
+
+
+@cli.command()
+@click.argument("pair", nargs=-1)
+def config(pair):
+    """Configure tankobon.
+
+    \b
+    This command can be used several ways:
+
+    \b
+    'tankobon config' - list all keys and values
+    'tankobon config (key)' - show value for key
+    'tankobon config (key) (value)' - set key to value
+    """
+
+    pair = list(pair[:2])
+    while len(pair) < 2:
+        pair.append(None)
+
+    key, value = pair
+
+    if key is None:
+        for key, value in CONFIG.items():
+            click.echo(f"{key}: {value}")
     else:
-        prettyprint(CONFIG)
+        if value is None:
+            click.echo(CONFIG[key])
+        else:
+            CONFIG[key] = to_native(value)
 
 
 @cli.command()

@@ -2,4 +2,4 @@
 
 from tankobon.cli import main
 
-main(prog_name="tankobon")
+main()

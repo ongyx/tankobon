@@ -77,7 +77,7 @@ languages: čeština, český jazyk (cs)
 Next, set the language:
 
 ```bash
-$ tankobon config -s lang=<code>
+$ tankobon config lang <code>
 ```
 
 where code is the two-letter ISO 639-1 id (i.e `fr` for `français`) beside the language's native name.

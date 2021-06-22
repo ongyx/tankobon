@@ -146,12 +146,22 @@ class Downloader:
 
         self.path = path
 
+        self.config = utils.CONFIG
         self.session = utils.UserSession()
         self.manifest = utils.PersistentDict(self.path / self.MANIFEST)
 
     def close(self):
         self.session.close()
         self.manifest.close()
+
+    def downloaded(self, chapter: models.Chapter) -> bool:
+        """Check whether a chapter has been downloaded or not."""
+        try:
+            self.manifest[chapter.id][chapter.lang]
+        except KeyError:
+            return False
+        else:
+            return True
 
     def download(
         self,
@@ -192,7 +202,9 @@ class Downloader:
         pages = []
         total = len(chapter.pages)
 
-        with cfutures.ThreadPoolExecutor(max_workers=8) as pool:
+        with cfutures.ThreadPoolExecutor(
+            max_workers=self.config["download.rate_limit"]
+        ) as pool:
             futures = {
                 pool.submit(self.session.get, url): count
                 for count, url in enumerate(chapter.pages)
