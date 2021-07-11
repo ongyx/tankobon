@@ -25,15 +25,20 @@ CONFIG = utils.CONFIG
 CONFIG_TYPES = [int, float, str]
 
 
-def prettyprint(dict_):
+def prettyprint(dict_, indent=0):
 
     for key, value in dict_.items():
 
         # +2 for the ': ' suffix
-        indent = len(key) + 2
+        indent_ = indent + len(key) + 2
 
         if isinstance(value, list):
-            value = f"\n{' ' * indent}".join(value)
+            value = f"\n{' ' * indent_}".join(value)
+
+        elif isinstance(value, dict):
+            if CONFIG["lang"] in value or "en" in value:
+                # a localised field of some kind.
+                value = value.get(CONFIG["lang"]) or value["en"]
 
         click.echo(f"{key}: {value}\n")
 

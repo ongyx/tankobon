@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2021.7.11 (11 July)
+
+### Added
+
+* Genshin Impact manga source.
+
 ## 2021.6.8 (22 June)
 
 ### Added

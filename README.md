@@ -17,6 +17,7 @@ The following websites are currently supported:
 - `catmanga.org`
 - `mangakakalot.com`
 - `mangadex.org`
+- `https://genshin.mihoyo.com/en/manga`
 
 ## API Docs / Changelog
 
@@ -91,7 +92,7 @@ Once the settings are closed, the manga currently being displayed will be reload
 
 - [x] tests and docs (docs done)
 - [x] create GUI to make downloading easier, like youtube-DLG
-- [ ] Add user configuration to select another language
+- [x] Add user configuration to select another language
 - [ ] `Searcher` class (to search for manga?)
 - [ ] i18n for selected language?
 

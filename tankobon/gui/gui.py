@@ -404,6 +404,7 @@ class ItemInfoBox(QWidget):
 
         source = QLabel(f'<a href="{meta.url}">{meta.url}</b>')
         source.setWordWrap(True)
+        source.setOpenExternalLinks(True)
         layout.addWidget(source, 6, 1)
 
         langs_header = SubtitleLabel("Languages")
@@ -462,7 +463,10 @@ class PageViewToolBar(QToolBar):
     def __init__(self, total):
 
         super().__init__()
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setStyleSheet("background-color: red")
+        self.setMovable(True)
+        self.setFloatable(True)
 
         self.pageno = 1
         self.total = total
@@ -516,25 +520,22 @@ class PageViewToolBar(QToolBar):
         self.setPage.emit(self.total)
 
 
-class PageView(QWidget):
+class PageView(QScrollArea):
     def __init__(self, parent, pages):
-        super().__init__(parent, Qt.Window)
-        self.layout = QVBoxLayout(self)
+        super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.setStyleSheet("background-color: #000000")
+        self.setWidgetResizable(True)
 
         self.pages = pages
 
         self.label = QLabel()
-        self.label.setSizePolicy(
-            QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding
-        )
         self.label.setScaledContents(True)
 
-        self.layout.addWidget(self.label, 0, Qt.AlignCenter)
+        self.setWidget(self.label)
 
         self.toolbar = PageViewToolBar(len(self.pages))
         self.toolbar.setPage.connect(self.onSetPage)
-
-        self.layout.addWidget(self.toolbar, 0, Qt.AlignCenter)
 
         self._height = self.label.height() + self.toolbar.height() / 2
 
@@ -543,12 +544,6 @@ class PageView(QWidget):
     def onSetPage(self, pageno):
         pixmap = QPixmap(self.pages[pageno - 1])
 
-        height = self._height
-        width = (pixmap.width() / pixmap.height()) * height
-
-        print(width, height)
-
-        self.label.resize(width, height)
         self.label.setPixmap(pixmap)
 
 
@@ -865,7 +860,6 @@ class ChapterView(QTableWidget):
         self.buttons[chapter.id].setIcon(utils.icon("eye"))
 
         # pages = self.downloader.manifest[chapter.id][chapter.lang]
-
         # page_view = PageView(self, pages)
         # page_view.showMaximized()
 
@@ -884,6 +878,7 @@ class SummaryView(QWidget):
         self.layout.addWidget(chapters)
 
         desc = QLabel()
+        desc.setTextInteractionFlags(Qt.TextBrowserInteraction)
         desc.setWordWrap(True)
         desc.setTextFormat(Qt.RichText)
         desc.setOpenExternalLinks(True)

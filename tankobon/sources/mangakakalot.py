@@ -36,7 +36,7 @@ class Parser(base.Parser):
         alt_titles_tag = title_tag.h2.text.partition(":")[-1]
         alt_titles = alt_titles_tag.split(",")
 
-        authors = [a.text for a in info[1].find_all("a")]
+        authors = [a.text.strip() for a in info[1].find_all("a")]
 
         genres = [a.text.lower().replace(" ", "_") for a in info[6].find_all("a")]
 

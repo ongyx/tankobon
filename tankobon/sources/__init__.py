@@ -32,4 +32,4 @@ manga = parser.create(manga_url)
 """
 
 # import to register default sources
-from . import catmanga, mangadex, mangakakalot
+from . import catmanga, genshin, mangadex, mangakakalot
