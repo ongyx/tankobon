@@ -1,6 +1,6 @@
 # coding: utf8
 """
-# tankobon, version {version}
+# tankobon {version}
 
 Copyright (c) 2020-2021 Ong Yong Xin
 
@@ -24,6 +24,7 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -235,6 +236,21 @@ class RateLimitSpinBox(QSpinBox):
         CONFIG["download.rate_limit"] = value
 
 
+class DataSaverCheckBox(QCheckBox):
+    def __init__(self):
+        super().__init__("Data saver (low-quality pages)")
+
+        state = Qt.Unchecked
+        if CONFIG["mangadex.data_saver"]:
+            state = Qt.Checked
+
+        self.setCheckState(state)
+        self.stateChanged.connect(self.onStateChanged)
+
+    def onStateChanged(self, state):
+        CONFIG["mangadex.data_saver"] = state == Qt.Checked
+
+
 class SettingsTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -251,6 +267,7 @@ class Settings(QDialog):
         tabs = QTabWidget()
         tabs.addTab(self.general(), "General")
         tabs.addTab(self.downloads(), "Downloads")
+        tabs.addTab(self.sources(), "Sources")
         layout.addWidget(tabs)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -279,6 +296,19 @@ class Settings(QDialog):
             )
         )
         tab.layout.addWidget(spinbox)
+
+        return tab
+
+    def sources(self):
+        tab = SettingsTab()
+
+        tab.layout.addWidget(QLabel("Mangadex"))
+
+        data_saver = DataSaverCheckBox()
+        data_saver.setToolTip(
+            "Download low-quality pages to save bandwidth and disk space."
+        )
+        tab.layout.addWidget(data_saver)
 
         return tab
 

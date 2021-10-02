@@ -216,7 +216,7 @@ class PersistentDict(collections.UserDict):
 class Config(PersistentDict):
 
     CONFIG = "config.json"
-    DEFAULTS = {"lang": "en", "download.rate_limit": 8}
+    DEFAULTS = {"lang": "en", "log.level": "DEBUG", "download.rate_limit": 8}
 
     def __init__(self, path: Optional[pathlib.Path] = None):
         if path is None:

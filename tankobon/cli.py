@@ -16,10 +16,6 @@ from .exceptions import MangaNotFoundError
 click.option: Callable[..., Any] = functools.partial(click.option, show_default=True)  # type: ignore
 
 _log = logging.getLogger("tankobon")
-VERBOSITY = [
-    getattr(logging, level)
-    for level in ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
-]
 
 CONFIG = utils.CONFIG
 CONFIG_TYPES = [int, float, str]
@@ -55,10 +51,7 @@ def _load(shorthash, cache):
 
 @click.group()
 @click.version_option(__version__)
-@click.option(
-    "-v", "--verbose", "verbosity", help="be more chatty", default=4, count=True
-)
-def cli(verbosity):
+def cli():
     """Manga browser/downloader.
 
     Once a manga has been added to tankobon using 'tankobon add <url>',
@@ -68,7 +61,7 @@ def cli(verbosity):
     """
     # set up logger
     coloredlogs.install(
-        level=VERBOSITY[verbosity - 1],
+        level=getattr(logging, CONFIG["log.level"]),
         fmt=" %(levelname)-8s :: %(message)s",
         logger=_log,
     )

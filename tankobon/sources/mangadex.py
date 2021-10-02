@@ -3,7 +3,10 @@
 import MangaDexPy  # type: ignore
 
 from .. import models
+from ..utils import CONFIG
 from . import base
+
+CONFIG.setdefault("mangadex.data_saver", False)
 
 
 # turns something like 'es-la' to 'es'.
@@ -76,4 +79,9 @@ class Parser(base.Parser):
 
         net_chapter = self.client.get_chapter(uuid).get_md_network()
 
-        chapter.pages = net_chapter.pages
+        if CONFIG["mangadex.data_saver"]:
+            # use low-quality images to save bandwidth
+            chapter.pages = net_chapter.pages_redux
+
+        else:
+            chapter.pages = net_chapter.pages

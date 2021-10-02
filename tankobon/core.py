@@ -150,6 +150,16 @@ class Downloader:
         self.session = utils.UserSession()
         self.manifest = utils.PersistentDict(self.path / self.MANIFEST)
 
+        # repair manifest, if it uses absolute paths
+        for cid, langs in self.manifest.items():
+            for lang, pages in langs.items():
+                for index, page in enumerate(pages):
+                    page_path = pathlib.Path(page)
+                    if page_path.is_absolute():
+                        self.manifest[cid][lang][index] = page_path.name
+                    else:
+                        break
+
     def close(self):
         self.session.close()
         self.manifest.close()
@@ -231,7 +241,7 @@ class Downloader:
                     raise e
 
                 path = utils.save_response(chapter_path / str(count), resp)
-                pages.append(str(path))
+                pages.append(str(path.name))
 
                 if progress is not None:
                     progress(p_count)

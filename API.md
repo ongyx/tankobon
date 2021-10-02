@@ -43,12 +43,14 @@
     * [add\_pages](#tankobon.sources.base.Parser.add_pages)
     * [soup](#tankobon.sources.base.Parser.soup)
 
-<a name="tankobon.core"></a>
+<a id="tankobon.core"></a>
+
 # tankobon.core
 
 Core functionality of tankobon.
 
-<a name="tankobon.core.Cache"></a>
+<a id="tankobon.core.Cache"></a>
+
 ## Cache Objects
 
 ```python
@@ -67,11 +69,12 @@ A manga cache.
 - `root` - See args.
 - `alias` - A map of manga url to manga hash.
 
-<a name="tankobon.core.Cache.fullhash"></a>
+<a id="tankobon.core.Cache.fullhash"></a>
+
 #### fullhash
 
 ```python
- | fullhash(part: str) -> str
+def fullhash(part: str) -> str
 ```
 
 Get the full SHA512 hash of a manga when only given at least the first 8 letters of the hash.
@@ -90,11 +93,12 @@ Get the full SHA512 hash of a manga when only given at least the first 8 letters
 
   ValueError, if the length part is less than 8.
 
-<a name="tankobon.core.Cache.dump"></a>
+<a id="tankobon.core.Cache.dump"></a>
+
 #### dump
 
 ```python
- | dump(manga: models.Manga)
+def dump(manga: models.Manga)
 ```
 
 Save this manga within the cache.
@@ -103,11 +107,12 @@ Save this manga within the cache.
 
 - `manga` - The manga object to save.
 
-<a name="tankobon.core.Cache.load"></a>
+<a id="tankobon.core.Cache.load"></a>
+
 #### load
 
 ```python
- | load(hash: str) -> models.Manga
+def load(hash: str) -> models.Manga
 ```
 
 Load a manga by its hash.
@@ -126,11 +131,12 @@ Load a manga by its hash.
 
   MangaNotFoundError, if the manga does not exist in the cache.
 
-<a name="tankobon.core.Cache.delete"></a>
+<a id="tankobon.core.Cache.delete"></a>
+
 #### delete
 
 ```python
- | delete(hash: str)
+def delete(hash: str)
 ```
 
 Delete a manga from the cache.
@@ -144,7 +150,8 @@ Delete a manga from the cache.
 
   MangaNotFoundError, if the manga does not exist in the cache.
 
-<a name="tankobon.core.Downloader"></a>
+<a id="tankobon.core.Downloader"></a>
+
 ## Downloader Objects
 
 ```python
@@ -158,20 +165,22 @@ A manga downloader.
 - `path` - The path to where the manga chapters will be downloaded.
   For every manga chapter, a corrosponding folder is created if it does not exist.
 
-<a name="tankobon.core.Downloader.downloaded"></a>
+<a id="tankobon.core.Downloader.downloaded"></a>
+
 #### downloaded
 
 ```python
- | downloaded(chapter: models.Chapter) -> bool
+def downloaded(chapter: models.Chapter) -> bool
 ```
 
 Check whether a chapter has been downloaded or not.
 
-<a name="tankobon.core.Downloader.download"></a>
+<a id="tankobon.core.Downloader.download"></a>
+
 #### download
 
 ```python
- | download(chapter: models.Chapter, *, force: bool = False, progress: Optional[Callable[[int], None]] = None)
+def download(chapter: models.Chapter, *, force: bool = False, progress: Optional[Callable[[int], None]] = None)
 ```
 
 Download pages for a chapter.
@@ -189,11 +198,12 @@ Download pages for a chapter.
 
   PagesNotFoundError, if the chapter to be downloaded has no pages.
 
-<a name="tankobon.core.Downloader.download_cover"></a>
+<a id="tankobon.core.Downloader.download_cover"></a>
+
 #### download\_cover
 
 ```python
- | download_cover(manga: models.Manga)
+def download_cover(manga: models.Manga)
 ```
 
 Download a manga's cover to the download path as 'cover.(ext)'.
@@ -202,11 +212,12 @@ Download a manga's cover to the download path as 'cover.(ext)'.
 
 - `manga` - The manga to download a cover for.
 
-<a name="tankobon.core.Downloader.pdfify"></a>
+<a id="tankobon.core.Downloader.pdfify"></a>
+
 #### pdfify
 
 ```python
- | pdfify(chapters: List[str], dest: Union[str, pathlib.Path], lang: str = "en")
+def pdfify(chapters: List[str], dest: Union[str, pathlib.Path], lang: str = "en")
 ```
 
 Create a PDF out of several (downloaded) chapters.
@@ -219,21 +230,25 @@ The PDF will be A4 sized (vertical).
   Defaults to 'en'.
 - `dest` - Where to write the PDF to.
 
-<a name="tankobon.exceptions"></a>
+<a id="tankobon.exceptions"></a>
+
 # tankobon.exceptions
 
-<a name="tankobon.iso639"></a>
+<a id="tankobon.iso639"></a>
+
 # tankobon.iso639
 
 ISO 639-1/2 language code dataset mapping.
 Dataset sourced from https://github.com/haliaeetus/iso-639.
 
-<a name="tankobon.models"></a>
+<a id="tankobon.models"></a>
+
 # tankobon.models
 
 Model classes.
 
-<a name="tankobon.models.Metadata"></a>
+<a id="tankobon.models.Metadata"></a>
+
 ## Metadata Objects
 
 ```python
@@ -266,7 +281,8 @@ Metadata for a manga.
 - `hash` - A SHA-256 checksum of the manga url.
   (Can be used for filename-safe manga storage.)
 
-<a name="tankobon.models.Chapter"></a>
+<a id="tankobon.models.Chapter"></a>
+
 ## Chapter Objects
 
 ```python
@@ -288,7 +304,8 @@ A manga chapter.
 - `other` - Miscellanious map of keys to values.
   May be used by parsers to store parser-specific info (keep state).
 
-<a name="tankobon.models.Manga"></a>
+<a id="tankobon.models.Manga"></a>
+
 ## Manga Objects
 
 ```python
@@ -339,11 +356,12 @@ chapters = manga["1":"5":"es"]
   ISO 639-1 language codes that this manga was translated to.
   Note that chapters may not have a translation for all language codes.
 
-<a name="tankobon.models.Manga.add"></a>
+<a id="tankobon.models.Manga.add"></a>
+
 #### add
 
 ```python
- | add(chapter: Chapter)
+def add(chapter: Chapter)
 ```
 
 Add a chapter to this manga.
@@ -353,11 +371,12 @@ The chapter will not be added if it already exists (has the same id and lang as 
 
 - `chapter` - The chapter to add.
 
-<a name="tankobon.models.Manga.remove"></a>
+<a id="tankobon.models.Manga.remove"></a>
+
 #### remove
 
 ```python
- | remove(cid: str, lang: str = "en") -> Chapter
+def remove(cid: str, lang: str = "en") -> Chapter
 ```
 
 Remove a chapter from this manga.
@@ -373,11 +392,12 @@ Remove a chapter from this manga.
 
   The removed chapter.
 
-<a name="tankobon.models.Manga.exists"></a>
+<a id="tankobon.models.Manga.exists"></a>
+
 #### exists
 
 ```python
- | exists(chapter: Chapter) -> bool
+def exists(chapter: Chapter) -> bool
 ```
 
 Check whether a chapter already exists in this manga.
@@ -391,21 +411,23 @@ Check whether a chapter already exists in this manga.
 
   True if it exists, otherwise False.
 
-<a name="tankobon.models.Manga.dump"></a>
+<a id="tankobon.models.Manga.dump"></a>
+
 #### dump
 
 ```python
- | dump() -> dict
+def dump() -> dict
 ```
 
 Serialise this manga to a dict.
 
-<a name="tankobon.models.Manga.load"></a>
+<a id="tankobon.models.Manga.load"></a>
+
 #### load
 
 ```python
- | @classmethod
- | load(cls, data: dict) -> Manga
+@classmethod
+def load(cls, data: dict) -> Manga
 ```
 
 Deserialise this manga from a dict.
@@ -419,11 +441,12 @@ Deserialise this manga from a dict.
 
   The Manga object.
 
-<a name="tankobon.models.Manga.summary"></a>
+<a id="tankobon.models.Manga.summary"></a>
+
 #### summary
 
 ```python
- | summary(lang: str = "en", link: bool = True) -> str
+def summary(lang: str = "en", link: bool = True) -> str
 ```
 
 Create a Markdown table summary of all volumes and chapters in this manga.
@@ -439,11 +462,12 @@ Create a Markdown table summary of all volumes and chapters in this manga.
 
   The Markdown table as a string.
 
-<a name="tankobon.models.Manga.select"></a>
+<a id="tankobon.models.Manga.select"></a>
+
 #### select
 
 ```python
- | select(cids: str, lang: str = "en") -> List[Chapter]
+def select(cids: str, lang: str = "en") -> List[Chapter]
 ```
 
 Select chapters from this manga.
@@ -461,25 +485,28 @@ Select chapters from this manga.
 
   A list of Chapter objects.
 
-<a name="tankobon.models.Manga.parsed"></a>
+<a id="tankobon.models.Manga.parsed"></a>
+
 #### parsed
 
 ```python
- | parsed() -> bool
+def parsed() -> bool
 ```
 
 Check whether this manga has been parsed (has at least one chapter).
 
-<a name="tankobon.utils"></a>
+<a id="tankobon.utils"></a>
+
 # tankobon.utils
 
 Utilities for tankobon.
 
-<a name="tankobon.utils.filesize"></a>
+<a id="tankobon.utils.filesize"></a>
+
 #### filesize
 
 ```python
-filesize(content: bytes) -> str
+def filesize(content: bytes) -> str
 ```
 
 Create a human-readable filesize for content.
@@ -492,11 +519,12 @@ Create a human-readable filesize for content.
 
   A string of the filesize ending in B, kB, etc.
 
-<a name="tankobon.utils.sanitize"></a>
+<a id="tankobon.utils.sanitize"></a>
+
 #### sanitize
 
 ```python
-sanitize(name: str) -> str
+def sanitize(name: str) -> str
 ```
 
 Sanitise a name so it can be used as a filename.
@@ -509,11 +537,12 @@ Sanitise a name so it can be used as a filename.
 
   The sanitised name as a string.
 
-<a name="tankobon.utils.soup"></a>
+<a id="tankobon.utils.soup"></a>
+
 #### soup
 
 ```python
-soup(url: str, *args, *, session: Optional[requests.Session] = None, **kwargs) -> bs4.BeautifulSoup
+def soup(url: str, *args, *, session: Optional[requests.Session] = None, **kwargs) -> bs4.BeautifulSoup
 ```
 
 Get a url as a BeautifulSoup.
@@ -526,11 +555,12 @@ Get a url as a BeautifulSoup.
   Defaults to None.
 - `**kwargs` - Passed to session.get().
 
-<a name="tankobon.utils.save_response"></a>
+<a id="tankobon.utils.save_response"></a>
+
 #### save\_response
 
 ```python
-save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.Path
+def save_response(path: pathlib.Path, res: requests.models.Response) -> pathlib.Path
 ```
 
 Save a Requests response at path with the correct file extension.
@@ -545,20 +575,22 @@ Save a Requests response at path with the correct file extension.
 
   The full path to the file.
 
-<a name="tankobon.utils.is_url"></a>
+<a id="tankobon.utils.is_url"></a>
+
 #### is\_url
 
 ```python
-is_url(url: str) -> bool
+def is_url(url: str) -> bool
 ```
 
 Check whether or not a string is a url.
 
-<a name="tankobon.utils.parse_domain"></a>
+<a id="tankobon.utils.parse_domain"></a>
+
 #### parse\_domain
 
 ```python
-parse_domain(url: str) -> str
+def parse_domain(url: str) -> str
 ```
 
 Parse out a url's domain.
@@ -572,7 +604,8 @@ Parse out a url's domain.
 
   The domain.
 
-<a name="tankobon.utils.UserSession"></a>
+<a id="tankobon.utils.UserSession"></a>
+
 ## UserSession Objects
 
 ```python
@@ -581,7 +614,8 @@ class UserSession(requests.Session)
 
 requests.Session with randomised user agent in the headers.
 
-<a name="tankobon.utils.PersistentDict"></a>
+<a id="tankobon.utils.PersistentDict"></a>
+
 ## PersistentDict Objects
 
 ```python
@@ -618,23 +652,26 @@ d.sync()
 d.close()
 ```
 
-<a name="tankobon.sources.base"></a>
+<a id="tankobon.sources.base"></a>
+
 # tankobon.sources.base
 
 Abstract base classes for implementing a source.
 
-<a name="tankobon.sources.base.Parser"></a>
+<a id="tankobon.sources.base.Parser"></a>
+
 ## Parser Objects
 
 ```python
 class Parser(abc.ABC)
 ```
 
-<a name="tankobon.sources.base.Parser.create"></a>
+<a id="tankobon.sources.base.Parser.create"></a>
+
 #### create
 
 ```python
- | create(url: str) -> models.Manga
+def create(url: str) -> models.Manga
 ```
 
 Create a new manga.
@@ -648,12 +685,13 @@ Create a new manga.
 
   A Manga object.
 
-<a name="tankobon.sources.base.Parser.by_url"></a>
+<a id="tankobon.sources.base.Parser.by_url"></a>
+
 #### by\_url
 
 ```python
- | @classmethod
- | by_url(cls, url: str) -> Parser
+@classmethod
+def by_url(cls, url: str) -> Parser
 ```
 
 Get the appropiate parser subclass for the domain in url.
@@ -672,12 +710,13 @@ Get the appropiate parser subclass for the domain in url.
 
   UnknownDomainError, if there is no registered subclass for the url domain.
 
-<a name="tankobon.sources.base.Parser.metadata"></a>
+<a id="tankobon.sources.base.Parser.metadata"></a>
+
 #### metadata
 
 ```python
- | @abc.abstractmethod
- | metadata(url: str) -> models.Metadata
+@abc.abstractmethod
+def metadata(url: str) -> models.Metadata
 ```
 
 Parse metadata for a manga url.
@@ -691,12 +730,13 @@ Parse metadata for a manga url.
 
   The Metadata object.
 
-<a name="tankobon.sources.base.Parser.add_chapters"></a>
+<a id="tankobon.sources.base.Parser.add_chapters"></a>
+
 #### add\_chapters
 
 ```python
- | @abc.abstractmethod
- | add_chapters(manga: models.Manga)
+@abc.abstractmethod
+def add_chapters(manga: models.Manga)
 ```
 
 Add chapters to the manga.
@@ -718,12 +758,13 @@ def chapters(self, manga):
 
 - `manga` - The manga object.
 
-<a name="tankobon.sources.base.Parser.add_pages"></a>
+<a id="tankobon.sources.base.Parser.add_pages"></a>
+
 #### add\_pages
 
 ```python
- | @abc.abstractmethod
- | add_pages(chapter: models.Chapter)
+@abc.abstractmethod
+def add_pages(chapter: models.Chapter)
 ```
 
 Add pages to the chapter in the manga as a list of urls.
@@ -742,11 +783,12 @@ def pages(self, chapter):
 
 - `chapter` - The chapter object (already added to the manga).
 
-<a name="tankobon.sources.base.Parser.soup"></a>
+<a id="tankobon.sources.base.Parser.soup"></a>
+
 #### soup
 
 ```python
- | soup(url: str) -> bs4.BeautifulSoup
+def soup(url: str) -> bs4.BeautifulSoup
 ```
 
 Get a soup from a url.
