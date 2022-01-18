@@ -1,3 +1,3 @@
 # coding: utf8
 
-__version__ = "2021.10.2"
+__version__ = "2022.1.18"

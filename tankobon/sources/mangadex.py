@@ -1,6 +1,6 @@
 # coding: utf8
 
-import MangaDexPy  # type: ignore
+import MangaDexPy as mangadex  # type: ignore
 
 from .. import models
 from ..utils import CONFIG
@@ -21,7 +21,7 @@ class Parser(base.Parser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.client = MangaDexPy.MangaDex()
+        self.client = mangadex.MangaDex()
         self._cache = {}
 
     def _get_manga(self, url):

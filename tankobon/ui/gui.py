@@ -60,7 +60,7 @@ from ..utils import CONFIG
 
 from ..__version__ import __version__
 
-from . import resources, template, utils  # noqa: F401
+from . import common, resources, template, utils
 
 _app = QApplication([])
 _app.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -446,11 +446,7 @@ class ItemInfoBox(QWidget):
         for chapter in manga["chapters"].values():
             langs_set.update(chapter.keys())
 
-        langs = QLabel(
-            "<br>".join(
-                f"{iso639.DATASET[lang].native_name} ({lang})" for lang in langs_set
-            )
-        )
+        langs = QLabel("<br>".join(common.describe_langs(list(langs_set))))
         layout.addWidget(langs, 7, 1)
 
 

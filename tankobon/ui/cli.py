@@ -8,10 +8,12 @@ from typing import Any, Callable
 import click
 import coloredlogs  # type: ignore
 
-from . import __version__, core, iso639, utils
-from .sources.base import Parser
+from .. import __version__, core, iso639, utils
+from ..sources.base import Parser
 
-from .exceptions import MangaNotFoundError
+from ..exceptions import MangaNotFoundError
+
+from . import common
 
 click.option: Callable[..., Any] = functools.partial(click.option, show_default=True)  # type: ignore
 
@@ -126,14 +128,7 @@ def info(shorthash, chapter):
         else:
             prettyprint(manga.meta.__dict__)
 
-            prettyprint(
-                {
-                    "languages": [
-                        f"{iso639.DATASET[lang].native_name} ({lang})"
-                        for lang in info["langs"]
-                    ]
-                }
-            )
+            prettyprint({"languages": common.describe_langs(info["langs"])})
 
             click.echo(manga.summary(lang=CONFIG["lang"], link=False))
 
@@ -307,7 +302,7 @@ def _gui():
     """Start the tankobon GUI."""
 
     try:
-        from .gui import gui
+        from . import gui
 
     except ImportError:
         click.echo(

@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2021.1.18
+
+* Internal code reorganization.
+* Removed the `catmanga` and `genshin` sources. (R.I.P Black Cat Scanlations)
+* Removed dependency on fake_useragent in favour of an internal module `imposter`, which does the same thing.
+
 ## 2021.7.11 (11 July)
 
 ### Added

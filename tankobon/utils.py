@@ -10,17 +10,16 @@ import re
 from typing import Optional, Union
 from urllib.parse import urlparse
 
-import bs4  # type: ignore
-import fake_useragent as ua  # type: ignore
+import bs4
 import filetype  # type: ignore
 import requests
+
 
 Number = Union[int, float]
 
 _log = logging.getLogger("tankobon")
 
 BS4_PARSER = "html5lib"  # if you want, change to lxml for faster parsing
-USER_AGENT = ua.UserAgent()
 
 RE_DOMAIN = re.compile(r"^(?:www\.)?(.*)(:(\d+))?$")
 
@@ -42,10 +41,13 @@ def filesize(content: bytes) -> str:
         A string of the filesize ending in B, kB, etc.
     """
     filesize = float(len(content))
+    suffix = None
+
     for suffix in ["B", "KiB", "MiB", "GiB"]:
         if filesize < 1024.0 or suffix == "GiB":
             break
         filesize /= 1024.0
+
     return f"{filesize:.1f} {suffix}"
 
 
@@ -126,15 +128,6 @@ def parse_domain(url: str) -> str:
     """
 
     return RE_DOMAIN.findall(urlparse(url).netloc)[0][0]
-
-
-class UserSession(requests.Session):
-    """requests.Session with randomised user agent in the headers."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.headers.update({"User-Agent": USER_AGENT.random})
 
 
 class PersistentDict(collections.UserDict):

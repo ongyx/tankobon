@@ -13,7 +13,7 @@ import imagesize  # type: ignore
 import natsort  # type: ignore
 import requests.exceptions
 
-from . import models, utils
+from . import imposter, models, utils
 from .exceptions import MangaNotFoundError, PagesNotFoundError
 
 _log = logging.getLogger("tankobon")
@@ -147,7 +147,7 @@ class Downloader:
         self.path = path
 
         self.config = utils.CONFIG
-        self.session = utils.UserSession()
+        self.session = imposter.UserSession()
         self.manifest = utils.PersistentDict(self.path / self.MANIFEST)
 
         # repair manifest, if it uses absolute paths

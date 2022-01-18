@@ -7,9 +7,9 @@ import abc
 import re
 from typing import List, Type
 
-import bs4  # type: ignore
+import bs4
 
-from .. import models, utils
+from .. import imposter, models
 from ..exceptions import UnknownDomainError
 
 
@@ -19,7 +19,7 @@ class Parser(abc.ABC):
     registered: List[Type[Parser]] = []
 
     def __init__(self):
-        self.session = utils.UserSession()
+        self.session = imposter.UserSession()
 
     def create(self, url: str) -> models.Manga:
         """Create a new manga.

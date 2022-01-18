@@ -14,10 +14,8 @@ Pure-python manga downloader.
 
 The following websites are currently supported:
 
-- `catmanga.org`
 - `mangakakalot.com`
 - `mangadex.org`
-- `https://genshin.mihoyo.com/en/manga`
 
 ## API Docs / Changelog
 
@@ -26,11 +24,18 @@ See [here](API.md) and [there](CHANGELOG.md).
 ## Usage (CLI)
 
 ```bash
-# Add a manga url to the cache (at ~/.tankobon):
-tankobon refresh https://catmanga.org/series/komi
+# Add a manga url to the cache (at ~/.local/share/tankobon)
+$ tankobon add https://mangadex.org/title/a96676e5-8ae2-425e-b549-7f15dd34a6d8
 
-# Then download it (to the current folder)...
-tankobon download https://catmanga.org/series/komi
+# List all manga in the cache
+$ tankobon list
+supported websites: mangadex\.org/title/([a-fA-F0-9\-]+)
+                    mangakakalot.com
+
+540a94ad: Komi-san wa Komyushou Desu. (https://mangadex.org/title/a96676e5-8ae2-425e-b549-7f15dd34a6d8)
+
+# download it to disk...
+$ tankobon download 540a94ad
 
 # ...and pack it into a nice pdf file for use with your favourite e-reader.
 tankobon pdfify -o komi.pdf
@@ -112,8 +117,8 @@ $ flit install -s  # Install tankobon as a symlink (any changes to source code w
 
 # (make your code changes here...)
 
-# Make sure to fix any style/type errors if they show up by running this.
-$ pytest --flake8 --mypy
+# make sure all tests pass
+$ pytest
 ```
 
 ## Credits

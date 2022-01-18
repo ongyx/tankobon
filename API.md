@@ -32,8 +32,13 @@
   * [save\_response](#tankobon.utils.save_response)
   * [is\_url](#tankobon.utils.is_url)
   * [parse\_domain](#tankobon.utils.parse_domain)
-  * [UserSession](#tankobon.utils.UserSession)
   * [PersistentDict](#tankobon.utils.PersistentDict)
+* [tankobon.imposter](#tankobon.imposter)
+  * [UserAgent](#tankobon.imposter.UserAgent)
+    * [random](#tankobon.imposter.UserAgent.random)
+    * [cache](#tankobon.imposter.UserAgent.cache)
+  * [cached](#tankobon.imposter.cached)
+  * [UserSession](#tankobon.imposter.UserSession)
 * [tankobon.sources.base](#tankobon.sources.base)
   * [Parser](#tankobon.sources.base.Parser)
     * [create](#tankobon.sources.base.Parser.create)
@@ -604,16 +609,6 @@ Parse out a url's domain.
 
   The domain.
 
-<a id="tankobon.utils.UserSession"></a>
-
-## UserSession Objects
-
-```python
-class UserSession(requests.Session)
-```
-
-requests.Session with randomised user agent in the headers.
-
 <a id="tankobon.utils.PersistentDict"></a>
 
 ## PersistentDict Objects
@@ -651,6 +646,80 @@ d.sync()
 
 d.close()
 ```
+
+<a id="tankobon.imposter"></a>
+
+# tankobon.imposter
+
+Imposter fakes a user agent to use in requests.
+A random user agent is chosen using a weighted statistic, but if stats are unavailable a non-weighted random is chosen.
+
+<a id="tankobon.imposter.UserAgent"></a>
+
+## UserAgent Objects
+
+```python
+@jsonclasses.dataclass
+class UserAgent()
+```
+
+An interface to get a randomised user agent.
+
+**Attributes**:
+
+- `browsers` - A map of browser name to the possible user agent strings for that browser.
+- `stats` - A map of browser name to its vistor statistics retreived from W3Schools.
+
+<a id="tankobon.imposter.UserAgent.random"></a>
+
+#### random
+
+```python
+def random(browser: Optional[str] = None, weighted: bool = True) -> str
+```
+
+Get a randomised user agent.
+
+**Arguments**:
+
+- `browser` - The browser to limit the user agent to.
+- `weighted` - Whether or not to get a random browser by weighted statistic.
+  If false, a non-weighted random choice is made.
+  
+
+**Returns**:
+
+  The random user agent, as a string.
+
+<a id="tankobon.imposter.UserAgent.cache"></a>
+
+#### cache
+
+```python
+def cache()
+```
+
+Save the downloaded user agent data to disk.
+
+<a id="tankobon.imposter.cached"></a>
+
+#### cached
+
+```python
+def cached() -> UserAgent
+```
+
+Load the cached user agent data from disk.
+
+<a id="tankobon.imposter.UserSession"></a>
+
+## UserSession Objects
+
+```python
+class UserSession(requests.Session)
+```
+
+requests.Session with randomised user agent in the headers.
 
 <a id="tankobon.sources.base"></a>
 
