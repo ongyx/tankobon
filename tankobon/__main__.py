@@ -1,5 +1,5 @@
 # coding: utf8
 
-from tankobon.cli import main
+from tankobon.ui.cli import main
 
 main()

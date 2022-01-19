@@ -36,7 +36,7 @@ dev = [
     "pytest",
     "pytest-flake8",
     "pytest-mypy",
-    "pydoc-markdown>=3.10.1"
+    "pdoc3"
 ]
 
 [tool.flit.scripts]

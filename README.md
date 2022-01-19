@@ -19,7 +19,7 @@ The following websites are currently supported:
 
 ## API Docs / Changelog
 
-See [here](API.md) and [there](CHANGELOG.md).
+See [here](docs/tankobon/index.html) and [there](CHANGELOG.md).
 
 ## Usage (CLI)
 
@@ -113,12 +113,13 @@ Just send in a PR with your feature changes/bug fixes. To set up development bui
 $ git clone https://github.com/ongyx/tankobon && cd tankobon
 
 # (create and enter a virtualenv if you want)
-$ flit install -s  # Install tankobon as a symlink (any changes to source code will be reflected immediately)
+
+$ make install-dev
 
 # (make your code changes here...)
 
 # make sure all tests pass
-$ pytest
+$ make all
 ```
 
 ## Credits
