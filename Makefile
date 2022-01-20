@@ -8,10 +8,10 @@ resource:
 	python create_resources.py
 
 clean:
-	rm -rf build docs
+	rm -rf build docs/tankobon/
 
 doc:
-	pdoc --html --output-dir $(DOCDIR) $(MODULE)
+	pdoc -o $(DOCDIR) --html $(MODULE)
 
 install:
 	flit install

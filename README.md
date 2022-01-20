@@ -19,7 +19,7 @@ The following websites are currently supported:
 
 ## API Docs / Changelog
 
-See [here](docs/tankobon/index.html) and [there](CHANGELOG.md).
+See [here](https://ongyx.github.io/tankobon) and [there](CHANGELOG.md).
 
 ## Usage (CLI)
 
