@@ -40,11 +40,7 @@ class Parser(base.Parser):
         for alt_title in manga.titles:
             alt_titles.extend(alt_title.values())
 
-        authors = []
-
-        # NOTE: array keys must have brackets '[]'!
-        for author in self.client.search("author", params={"ids[]": manga.author}):
-            authors.append(author.name)
+        authors = [a.name for a in manga.author]
 
         # localised descriptions
         desc = {normalize(k): v for k, v in manga.desc.items()}
@@ -56,7 +52,7 @@ class Parser(base.Parser):
             authors=authors,
             genres=[t.name["en"] for t in manga.tags],
             desc=desc,
-            cover=self.client.get_cover(manga.cover).url,
+            cover=manga.cover.url,
         )
 
     def add_chapters(self, manga):
