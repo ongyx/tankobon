@@ -1,4 +1,6 @@
-# ![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/.github/logo.jpg) tankobon
+# tankobon
+
+![logo](https://raw.githubusercontent.com/ongyx/tankobon/master/resources/logo.jpg)
 
 ![gui](https://raw.githubusercontent.com/ongyx/tankobon/master/example.png "tankobon")
 
@@ -10,14 +12,14 @@
 ![Lines of code](https://img.shields.io/tokei/lines/github/ongyx/tankobon)
 ![calver](https://img.shields.io/badge/calver-YY.MM.MICRO-22bfda.svg)
 
-Pure-python manga downloader.
+Yet another manga downloader.
 
 The following websites are currently supported:
 
 - `mangakakalot.com`
 - `mangadex.org`
 
-## API Docs / Changelog
+[Documentation](https://ongyx.github.io/tankobon/docs)
 
 See [here](https://ongyx.github.io/tankobon) and [there](CHANGELOG.md).
 

@@ -1,17 +1,12 @@
-MODULE=tankobon
-DOCDIR=docs
 TESTDIR=tests
 
-.PHONY: install install-dev test doc clean all
+.PHONY: install install-dev test clean all
 
 resource:
 	python create_resources.py
 
 clean:
-	rm -rf build docs/tankobon/
-
-doc:
-	pdoc -o $(DOCDIR) --html $(MODULE)
+	rm -rf build
 
 install:
 	flit install
@@ -22,4 +17,4 @@ install-dev:
 test:
 	pytest $(TESTDIR)
 
-all: clean resource doc test
+all: clean resource test

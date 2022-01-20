@@ -1,5 +1,8 @@
 # coding: utf8
-"""Yet another manga downloader."""
+"""Yet another manga downloader.
+
+.. include:: ./documentation.md
+"""
 
 from .__version__ import __version__
 
