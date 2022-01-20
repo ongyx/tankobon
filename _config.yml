@@ -1,5 +1,5 @@
 title: tankobon
-logo: /logo.jpg
-description: Yet another manga downloader.
+logo: /docs/logo.jpg
+description: yet another manga downloader
 show_downloads: true
 theme: jekyll-theme-minimal
